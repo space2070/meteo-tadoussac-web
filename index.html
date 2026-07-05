@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#040b16">
+<meta name="description" content="Marées de Tadoussac en temps réel — prédictions officielles du Service hydrographique du Canada (station 03425).">
+<title>Marées · Tadoussac</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌊%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Schibsted+Grotesk:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night-0:#02060d;
+  --night-1:#040b16;
+  --night-2:#071527;
+  --night-3:#0b2138;
+  --ink:#eaf3f7;
+  --ink-2:#9fb4c6;
+  --ink-3:#5f7890;
+  --tide:#6ee7d2;        /* bioluminescence — série unique */
+  --tide-dim:#2c8f88;
+  --moon:#f2e7c4;
+  --glass:rgba(255,255,255,.045);
+  --glass-edge:rgba(255,255,255,.09);
+  --danger:#f4a09c;
+  --serif:"Fraunces",Georgia,serif;
+  --sans:"Schibsted Grotesk",system-ui,sans-serif;
+  --mono:"Spline Sans Mono",ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans);
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--night-0) 0%,var(--night-1) 30%,var(--night-2) 65%,var(--night-3) 100%);
+  min-height:100svh;
+  overflow-x:hidden;
+}
+
+/* ---------- ciel ---------- */
+#sky{position:fixed;inset:0;z-index:-2;overflow:hidden}
+.star{position:absolute;border-radius:50%;background:#cfe4ee;animation:twinkle 4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.85}}
+#moon{
+  position:absolute;top:7vh;right:9vw;width:74px;height:74px;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,#fbf4dc 0%,var(--moon) 45%,#cdbf94 100%);
+  box-shadow:0 0 45px 12px rgba(242,231,196,.16),0 0 130px 40px rgba(242,231,196,.07);
+}
+#aurora{
+  position:absolute;top:-12vh;left:-25vw;width:150vw;height:55vh;
+  background:radial-gradient(ellipse 55% 45% at 50% 45%,rgba(52,196,187,.14),transparent 70%);
+  filter:blur(38px);
+  animation:aurora 26s ease-in-out infinite alternate;
+}
+@keyframes aurora{from{transform:translateX(-6vw) skewX(-6deg)}to{transform:translateX(9vw) skewX(5deg)}}
+
+/* ---------- structure ---------- */
+#app{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:20px 20px 40vh}
+header{display:flex;justify-content:space-between;align-items:baseline;padding:6px 2px 30px}
+#wordmark{font-family:var(--serif);font-weight:400;font-size:1.05rem;letter-spacing:.42em;text-transform:uppercase;color:var(--ink-2)}
+#wordmark b{color:var(--ink);font-weight:500}
+#clock{font-family:var(--mono);font-size:.95rem;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* ---------- héro ---------- */
+#hero{text-align:center;padding:2vh 0 5vh}
+#trend{
+  display:inline-flex;align-items:center;gap:.5em;
+  font-size:.8rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--tide);
+  padding:.55em 1.2em;border-radius:99px;
+  border:1px solid rgba(110,231,210,.25);
+  background:rgba(110,231,210,.06);
+  box-shadow:0 0 24px rgba(110,231,210,.09) inset;
+}
+#next-label{margin-top:4.5vh;font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-3)}
+#next-time{
+  font-family:var(--serif);font-weight:300;font-style:italic;
+  font-size:clamp(4.6rem,20vw,7.5rem);line-height:1.05;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+  text-shadow:0 0 60px rgba(110,231,210,.25);
+}
+#next-detail{color:var(--ink-2);font-size:1.02rem}
+#next-detail b{color:var(--tide);font-weight:600}
+#countdown{margin-top:.5em;font-family:var(--mono);font-size:.92rem;color:var(--ink-3)}
+
+/* ---------- niveau vivant ---------- */
+#live{
+  margin:0 auto 5vh;max-width:340px;text-align:center;
+  padding:20px 24px;border-radius:20px;
+  background:var(--glass);border:1px solid var(--glass-edge);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+#live-label{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-3)}
+#live-value{
+  font-family:var(--mono);font-size:2.5rem;font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--tide);
+  text-shadow:0 0 30px rgba(110,231,210,.35);
+}
+#live-value small{font-size:1.1rem;color:var(--ink-2);margin-left:.15em}
+#live-arrow{font-size:1.2rem;vertical-align:.35em;margin-left:.2em}
+
+/* ---------- sections verre ---------- */
+.card{
+  border-radius:22px;padding:22px 20px;margin-bottom:26px;
+  background:var(--glass);border:1px solid var(--glass-edge);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.card h2{
+  font-family:var(--serif);font-weight:400;font-size:1.15rem;font-style:italic;
+  color:var(--ink-2);margin-bottom:16px;
+}
+
+/* ---------- courbe ---------- */
+#curve-wrap{position:relative}
+#curve{display:block;width:100%;height:auto;touch-action:pan-y}
+.axis-label{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
+.grid-line{stroke:rgba(255,255,255,.055);stroke-width:1}
+.tide-line{stroke:var(--tide);stroke-width:2;fill:none;stroke-linecap:round}
+.tide-area{fill:url(#areaGrad)}
+.extreme-label{font-family:var(--mono);font-size:10.5px;fill:var(--ink-2)}
+.extreme-dot{fill:var(--night-1);stroke:var(--tide);stroke-width:1.5}
+#now-dot{fill:var(--tide);stroke:var(--night-0);stroke-width:2}
+#now-pulse{fill:none;stroke:var(--tide);stroke-width:1.5;opacity:.8;transform-origin:center;animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{from{opacity:.7;stroke-width:2}to{opacity:0;stroke-width:.5}}
+#cross{stroke:rgba(255,255,255,.25);stroke-width:1;stroke-dasharray:3 3}
+#tooltip{
+  position:absolute;pointer-events:none;display:none;
+  font-family:var(--mono);font-size:.78rem;white-space:nowrap;
+  padding:.45em .8em;border-radius:10px;
+  background:rgba(4,11,22,.92);border:1px solid var(--glass-edge);
+  color:var(--ink);transform:translate(-50%,-130%);
+}
+#tooltip b{color:var(--tide)}
+
+/* ---------- marées du jour / semaine ---------- */
+#today-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.chip{
+  display:flex;flex-direction:column;gap:2px;align-items:center;
+  padding:14px 8px;border-radius:16px;
+  background:rgba(255,255,255,.035);border:1px solid var(--glass-edge);
+}
+.chip.past{opacity:.42}
+.chip .t{font-family:var(--mono);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.chip .k{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+.chip .m{font-size:.8rem;color:var(--ink-2)}
+.chip.high .t{color:var(--tide)}
+
+#week .day{padding:13px 2px;border-top:1px solid rgba(255,255,255,.06)}
+#week .day:first-child{border-top:none}
+#week .dname{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+#week .evts{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:.86rem;font-variant-numeric:tabular-nums}
+#week .evts span{color:var(--ink-2)}
+#week .evts .hi{color:var(--tide)}
+
+/* ---------- états ---------- */
+#loading,#error{text-align:center;padding:9vh 24px;color:var(--ink-2)}
+#loading .wave-dots{font-size:1.6rem;letter-spacing:.3em;animation:twinkle 1.6s ease-in-out infinite}
+#error{display:none}
+#error h2{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--danger);margin-bottom:.5em}
+#error p{font-size:.95rem;max-width:38ch;margin:0 auto 1.4em;line-height:1.55}
+#retry{
+  font:inherit;font-weight:600;color:var(--night-0);cursor:pointer;
+  background:var(--tide);border:none;border-radius:99px;padding:.7em 2em;
+}
+footer{
+  text-align:center;font-size:.72rem;color:var(--ink-3);
+  padding-top:10px;line-height:1.8;
+}
+footer a{color:var(--ink-3)}
+
+/* ---------- océan animé ---------- */
+#ocean{
+  position:fixed;left:0;right:0;bottom:0;z-index:0;
+  height:26vh; /* piloté en JS selon le niveau réel */
+  transition:height 1.2s linear;
+  pointer-events:none;
+}
+#ocean svg{position:absolute;bottom:0;width:200%;height:100%;left:0}
+.w1{animation:drift 13s linear infinite;opacity:.35}
+.w2{animation:drift 21s linear infinite reverse;opacity:.5}
+.w3{animation:drift 34s linear infinite;opacity:.9}
+@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#ocean::after{ /* lueur de surface */
+  content:"";position:absolute;left:0;right:0;top:-2px;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(110,231,210,.5),transparent);
+  filter:blur(1px);
+}
+@media (prefers-reduced-motion:reduce){
+  .w1,.w2,.w3,#aurora,.star,#now-pulse,#loading .wave-dots{animation:none}
+}
+@media (max-width:420px){
+  #moon{width:56px;height:56px;top:5vh}
+  .card{padding:18px 15px}
+}
+</style>
+</head>
+<body>
+
+<div id="sky"><div id="aurora"></div><div id="moon"></div></div>
+
+<div id="app">
+  <header>
+    <div id="wordmark"><b>Tadoussac</b> · marées</div>
+    <div id="clock" aria-label="Heure locale à Tadoussac">--:--:--</div>
+  </header>
+
+  <div id="loading" role="status">
+    <div class="wave-dots">🌊</div>
+    <p>Lecture des marées…</p>
+  </div>
+
+  <div id="error" role="alert">
+    <h2>Le fleuve ne répond pas</h2>
+    <p>Impossible de joindre les données de Pêches et Océans Canada.
+       Vérifie ta connexion, puis réessaie.</p>
+    <button id="retry">Réessayer</button>
+  </div>
+
+  <div id="content" hidden>
+    <section id="hero">
+      <span id="trend"></span>
+      <div id="next-label">prochaine marée</div>
+      <div id="next-time">--:--</div>
+      <div id="next-detail"></div>
+      <div id="countdown"></div>
+    </section>
+
+    <section id="live" aria-live="off">
+      <div id="live-label">niveau actuel</div>
+      <div id="live-value">-,--- <small>m</small><span id="live-arrow"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>La journée, heure par heure</h2>
+      <div id="curve-wrap">
+        <svg id="curve" viewBox="0 0 640 254" preserveAspectRatio="none" aria-label="Courbe du niveau de la marée aujourd'hui"></svg>
+        <div id="tooltip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Marées d'aujourd'hui</h2>
+      <div id="today-chips"></div>
+    </section>
+
+    <section class="card">
+      <h2>Les sept prochains jours</h2>
+      <div id="week"></div>
+    </section>
+
+    <footer>
+      Prédictions officielles du Service hydrographique du Canada — station Tadoussac (03425)<br>
+      Données : <a href="https://www.tides.gc.ca" rel="noopener">Pêches et Océans Canada</a>
+    </footer>
+  </div>
+</div>
+
+<div id="ocean" aria-hidden="true">
+  <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0e3a4d"/>
+        <stop offset="1" stop-color="#051523"/>
+      </linearGradient>
+    </defs>
+    <g class="w1"><path fill="#123f52" d="M0,96 C240,64 480,128 720,96 C960,64 1200,128 1440,96 L1440,320 L0,320 Z M1440,96 C1680,64 1920,128 2160,96 C2400,64 2640,128 2880,96 L2880,320 L1440,320 Z" transform="scale(1,1)"/></g>
+    <g class="w2"><path fill="#0d3145" d="M0,128 C240,96 480,170 720,128 C960,96 1200,170 1440,128 L1440,320 L0,320 Z M1440,128 C1680,96 1920,170 2160,128 C2400,96 2640,170 2880,128 L2880,320 L1440,320 Z"/></g>
+    <g class="w3"><path fill="url(#wg)" d="M0,160 C240,130 480,200 720,160 C960,130 1200,200 1440,160 L1440,320 L0,320 Z M1440,160 C1680,130 1920,200 2160,160 C2400,130 2640,200 2880,160 L2880,320 L1440,320 Z"/></g>
+  </svg>
+</div>
+
+<script>
+"use strict";
+const API   = "https://api-iwls.dfo-mpo.gc.ca/api/v1";
+const STN   = "5cebf1df3d0f4a073c4bbbaf";       // Tadoussac 03425 — données publiques MPO
+const TZ    = "America/Toronto";
+const $     = id => document.getElementById(id);
+
+/* ---------- temps : tout est calé sur le fuseau de Tadoussac ---------- */
+const fmtTime  = new Intl.DateTimeFormat("fr-CA",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false});
+const fmtClockP = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+const fmtClock = {format:d=>fmtClockP.format(d).replace(/^24/,"00")}; // HH:MM:SS compact
+const fmtDay   = new Intl.DateTimeFormat("fr-CA",{timeZone:TZ,weekday:"long",day:"numeric",month:"long"});
+const fmtNum   = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtNum3  = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:3,maximumFractionDigits:3});
+
+function tzOffsetMs(date){ // décalage réel du fuseau à cette date (gère EDT/EST)
+  const p = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(date)
+    .reduce((a,x)=>(a[x.type]=x.value,a),{});
+  const asUTC = Date.UTC(p.year,p.month-1,p.day,p.hour==="24"?0:p.hour,p.minute,p.second);
+  return asUTC - date.getTime();
+}
+function localMidnightUTC(){ // minuit à Tadoussac, en ms UTC
+  const now = new Date(), off = tzOffsetMs(now);
+  const local = new Date(now.getTime()+off);
+  return Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate()) - off;
+}
+const dayKey = ms => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,dateStyle:"short"}).format(ms);
+
+/* ---------- données ---------- */
+let series = [];   // [{t(ms), v(m)}] — niveaux à la minute, aujourd'hui
+let events = [];   // [{t(ms), v(m), hi(bool)}] — pleines/basses mers 7 jours
+let dayMin = 0, dayMax = 1;
+
+async function fetchJSON(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+const iso = ms => new Date(ms).toISOString().replace(/\.\d+Z/,"Z");
+
+async function loadData(){
+  const t0 = localMidnightUTC(), t1 = t0 + 864e5, t7 = t0 + 7*864e5;
+  const [wlp, hilo] = await Promise.all([
+    fetchJSON(`${API}/stations/${STN}/data?time-series-code=wlp&from=${iso(t0)}&to=${iso(t1)}`),
+    fetchJSON(`${API}/stations/${STN}/data?time-series-code=wlp-hilo&from=${iso(t0)}&to=${iso(t7)}`),
+  ]);
+  if(!wlp.length || hilo.length < 2) throw new Error("données vides");
+  series = wlp.map(d=>({t:Date.parse(d.eventDate), v:d.value}));
+  dayMin = Math.min(...series.map(p=>p.v));
+  dayMax = Math.max(...series.map(p=>p.v));
+  // pleine/basse par alternance (même logique que l'endpoint wlp-hilo)
+  const firstLow = hilo[0].value < hilo[1].value;
+  events = hilo.map((d,i)=>({t:Date.parse(d.eventDate), v:d.value, hi: firstLow ? i%2===1 : i%2===0}));
+}
+
+/* ---------- interpolation du niveau à la seconde ---------- */
+function levelAt(ms){
+  if(!series.length) return null;
+  if(ms<=series[0].t) return series[0].v;
+  if(ms>=series[series.length-1].t) return series[series.length-1].v;
+  const i = Math.min(series.length-2, Math.max(0, Math.floor((ms-series[0].t)/6e4)));
+  const a = series[i], b = series[i+1];
+  return a.v + (b.v-a.v)*((ms-a.t)/(b.t-a.t));
+}
+
+/* ---------- rendu ---------- */
+const W=640, H=254, PX=34, PT=30, PB=46;
+const xOf = ms => PX + (ms - series[0].t)/(series[series.length-1].t - series[0].t)*(W-2*PX);
+const yOf = v  => { const pad=(dayMax-dayMin)*.14; return PT + (1-(v-(dayMin-pad))/((dayMax+pad)-(dayMin-pad)))*(H-PT-PB); };
+
+function renderCurve(){
+  const svg = $("curve");
+  const step = 5; // un point aux 5 min suffit pour le tracé
+  let line="", area="";
+  for(let i=0;i<series.length;i+=step){
+    const p=series[i], c=`${xOf(p.t).toFixed(1)},${yOf(p.v).toFixed(1)}`;
+    line += (i?"L":"M")+c;
+  }
+  const last=series[series.length-1];
+  line += `L${xOf(last.t).toFixed(1)},${yOf(last.v).toFixed(1)}`;
+  area = line + `L${(W-PX)},${H-PB}L${PX},${H-PB}Z`;
+
+  const grid=[0,6,12,18,24].map(h=>{
+    const x=PX+h/24*(W-2*PX);
+    return `<line class="grid-line" x1="${x}" y1="${PT}" x2="${x}" y2="${H-PB}"/>
+            <text class="axis-label" x="${x}" y="${H-8}" text-anchor="middle">${String(h).padStart(2,"0")} h</text>`;
+  }).join("");
+
+  const todayEvts = events.filter(e=>e.t>=series[0].t && e.t<=last.t);
+  const labels = todayEvts.map(e=>{
+    const x=xOf(e.t), y=yOf(e.v), up=e.hi;
+    const lx=Math.max(PX+24, Math.min(W-PX-24, x)); // étiquettes toujours dans le cadre
+    return `<circle class="extreme-dot" cx="${x}" cy="${y}" r="3.5"/>
+            <text class="extreme-label" x="${lx}" y="${up? y-16 : y+22}" text-anchor="middle">${fmtTime.format(e.t)}</text>
+            <text class="extreme-label" x="${lx}" y="${up? y-6 : y+32}" text-anchor="middle" opacity=".65">${fmtNum.format(e.v)} m</text>`;
+  }).join("");
+
+  svg.innerHTML = `
+    <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(110,231,210,.22)"/><stop offset="1" stop-color="rgba(110,231,210,0)"/>
+    </linearGradient></defs>
+    ${grid}
+    <path class="tide-area" d="${area}"/>
+    <path class="tide-line" d="${line}"/>
+    ${labels}
+    <line id="cross" y1="${PT}" y2="${H-PB}" visibility="hidden"/>
+    <circle id="now-pulse" r="6"/>
+    <circle id="now-dot" r="4.5"/>`;
+}
+
+function renderChips(){
+  const now=Date.now(), last=series[series.length-1];
+  $("today-chips").innerHTML = events
+    .filter(e=>e.t>=series[0].t && e.t<=last.t)
+    .map(e=>`<div class="chip ${e.hi?"high":""} ${e.t<now?"past":""}">
+        <span class="k">${e.hi?"⬆ haute":"⬇ basse"}</span>
+        <span class="t">${fmtTime.format(e.t)}</span>
+        <span class="m">${fmtNum.format(e.v)} m</span>
+      </div>`).join("");
+}
+
+function renderWeek(){
+  const groups={};
+  for(const e of events){ (groups[dayKey(e.t)] ??= []).push(e); }
+  $("week").innerHTML = Object.values(groups).map(list=>`
+    <div class="day">
+      <div class="dname">${fmtDay.format(list[0].t)}</div>
+      <div class="evts">${list.map(e=>
+        `<span class="${e.hi?"hi":""}">${e.hi?"⬆":"⬇"} ${fmtTime.format(e.t)} · ${fmtNum.format(e.v)} m</span>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+/* ---------- vivant : compteur, océan, point "maintenant" ---------- */
+function updateLive(){
+  const now = Date.now();
+  $("clock").textContent = fmtClock.format(now);
+  const lvl = levelAt(now);
+  if(lvl==null) return;
+
+  const soon = levelAt(now+9e5); // tendance sur 15 min
+  const rising = soon > lvl;
+  $("live-value").innerHTML = `${fmtNum3.format(lvl)} <small>m</small><span id="live-arrow">${rising?"↗":"↘"}</span>`;
+  $("trend").textContent = rising ? "Marée montante ↗" : "Marée descendante ↘";
+
+  const next = events.find(e=>e.t>now);
+  if(next){
+    $("next-time").textContent = fmtTime.format(next.t);
+    $("next-detail").innerHTML = `marée <b>${next.hi?"haute":"basse"}</b> · ${fmtNum.format(next.v)} m`;
+    const mins = Math.round((next.t-now)/6e4);
+    $("countdown").textContent = `dans ${Math.floor(mins/60)} h ${String(mins%60).padStart(2,"0")}`;
+  }
+
+  // l'océan monte et descend avec la vraie marée (8 → 30 % de l'écran)
+  const frac = Math.max(0, Math.min(1, (lvl-dayMin)/(dayMax-dayMin||1)));
+  $("ocean").style.height = (8 + frac*22) + "vh";
+
+  // point "maintenant" sur la courbe
+  const nd=$("now-dot"), np=$("now-pulse");
+  if(nd && now>=series[0].t && now<=series[series.length-1].t){
+    const x=xOf(now), y=yOf(lvl);
+    nd.setAttribute("cx",x); nd.setAttribute("cy",y);
+    np.setAttribute("cx",x); np.setAttribute("cy",y);
+  }
+}
+
+/* ---------- tooltip crosshair ---------- */
+function bindTooltip(){
+  const svg=$("curve"), tip=$("tooltip"), wrap=$("curve-wrap");
+  function show(ev){
+    const r=svg.getBoundingClientRect();
+    const px=(ev.clientX-r.left)/r.width*W;
+    if(px<PX||px>W-PX){hide();return}
+    const t=series[0].t + (px-PX)/(W-2*PX)*(series[series.length-1].t-series[0].t);
+    const v=levelAt(t);
+    const cross=$("cross");
+    cross.setAttribute("x1",px);cross.setAttribute("x2",px);cross.setAttribute("visibility","visible");
+    tip.style.display="block";
+    tip.style.left=(px/W*100)+"%";
+    tip.style.top=(yOf(v)/H*100)+"%";
+    tip.innerHTML=`${fmtTime.format(t)} · <b>${fmtNum.format(v)} m</b>`;
+  }
+  function hide(){ $("cross")?.setAttribute("visibility","hidden"); tip.style.display="none"; }
+  svg.addEventListener("pointermove",show);
+  svg.addEventListener("pointerdown",show);
+  svg.addEventListener("pointerleave",hide);
+}
+
+/* ---------- étoiles ---------- */
+(function stars(){
+  const sky=$("sky"), n=90, frag=document.createDocumentFragment();
+  for(let i=0;i<n;i++){
+    const s=document.createElement("div");
+    s.className="star";
+    const size=Math.random()*1.8+.6;
+    s.style.cssText=`width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*62}%;animation-delay:${(Math.random()*4).toFixed(2)}s;animation-duration:${(2.5+Math.random()*4).toFixed(2)}s`;
+    frag.appendChild(s);
+  }
+  sky.appendChild(frag);
+})();
+
+/* ---------- cycle de vie ---------- */
+let liveTimer=null;
+async function init(){
+  $("error").style.display="none";
+  $("loading").style.display="block";
+  $("content").hidden=true;
+  try{
+    await loadData();
+    renderCurve(); renderChips(); renderWeek(); bindTooltip();
+    $("loading").style.display="none";
+    $("content").hidden=false;
+    clearInterval(liveTimer);
+    updateLive();
+    liveTimer=setInterval(updateLive,1000);
+  }catch(err){
+    console.error(err);
+    $("loading").style.display="none";
+    $("error").style.display="block";
+  }
+}
+$("retry").addEventListener("click",init);
+setInterval(()=>{ if(!document.hidden) loadData().then(()=>{renderCurve();renderChips();renderWeek();}).catch(()=>{}) }, 18e5); // rafraîchit les données aux 30 min
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && series.length){
+  // au retour sur l'onglet : si les données du jour sont périmées (minuit passé), recharger
+  if(Date.now() > series[series.length-1].t) init();
+}});
+init();
+</script>
+</body>
+</html>
