@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#040b16">
+<meta name="theme-color" content="#0a1930">
 <meta name="description" content="Marées de Tadoussac en temps réel — prédictions officielles du Service hydrographique du Canada (station 03425).">
 <title>Marées · Tadoussac</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌊%3C/text%3E%3C/svg%3E">
@@ -11,20 +11,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Schibsted+Grotesk:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* Les couleurs sont pilotées en JS par la position réelle du soleil à Tadoussac.
+   Valeurs initiales = nuit (avant le premier calcul). */
 :root{
-  --night-0:#02060d;
-  --night-1:#040b16;
-  --night-2:#071527;
-  --night-3:#0b2138;
-  --ink:#eaf3f7;
-  --ink-2:#9fb4c6;
-  --ink-3:#5f7890;
-  --tide:#6ee7d2;        /* bioluminescence — série unique */
-  --tide-dim:#2c8f88;
-  --moon:#f2e7c4;
-  --glass:rgba(255,255,255,.045);
-  --glass-edge:rgba(255,255,255,.09);
-  --danger:#f4a09c;
+  --sky-top:#050a18; --sky-mid:#0a1930; --sky-low:#163050;
+  --ink:#e6f0f7; --ink-2:#96acc0; --ink-3:#607a92;
+  --panel:#0a1424; --page:#070e1a; --accent:#6ee7d2;
+  --cliff-far:#122741; --cliff-mid:#0c1b30; --cliff-near:#081221; --shore:#050b15;
+  --w1:#12405a; --w2:#0d3048; --w3:#082033;
+  --cloud:#1e324b; --cloud-op:.5; --star-op:1; --sun-op:0; --moon-op:1;
   --serif:"Fraunces",Georgia,serif;
   --sans:"Schibsted Grotesk",system-ui,sans-serif;
   --mono:"Spline Sans Mono",ui-monospace,monospace;
@@ -32,175 +27,311 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{
-  font-family:var(--sans);
-  color:var(--ink);
-  background:linear-gradient(180deg,var(--night-0) 0%,var(--night-1) 30%,var(--night-2) 65%,var(--night-3) 100%);
-  min-height:100svh;
-  overflow-x:hidden;
+  font-family:var(--sans); color:var(--ink); background:var(--page);
+  min-height:100svh; overflow-x:hidden;
+}
+body,#scene .sky, .cloud path, .cliff path, #shore, .gull path, .dog path, .dog rect{
+  transition:color 3s linear, background 3s linear, fill 3s linear;
 }
 
-/* ---------- ciel ---------- */
-#sky{position:fixed;inset:0;z-index:-2;overflow:hidden}
-.star{position:absolute;border-radius:50%;background:#cfe4ee;animation:twinkle 4s ease-in-out infinite}
-@keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.85}}
-#moon{
-  position:absolute;top:7vh;right:9vw;width:74px;height:74px;border-radius:50%;
-  background:radial-gradient(circle at 38% 34%,#fbf4dc 0%,var(--moon) 45%,#cdbf94 100%);
-  box-shadow:0 0 45px 12px rgba(242,231,196,.16),0 0 130px 40px rgba(242,231,196,.07);
-}
-#aurora{
-  position:absolute;top:-12vh;left:-25vw;width:150vw;height:55vh;
-  background:radial-gradient(ellipse 55% 45% at 50% 45%,rgba(52,196,187,.14),transparent 70%);
-  filter:blur(38px);
-  animation:aurora 26s ease-in-out infinite alternate;
-}
-@keyframes aurora{from{transform:translateX(-6vw) skewX(-6deg)}to{transform:translateX(9vw) skewX(5deg)}}
-
-/* ---------- structure ---------- */
-#app{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:20px 20px 40vh}
-header{display:flex;justify-content:space-between;align-items:baseline;padding:6px 2px 30px}
-#wordmark{font-family:var(--serif);font-weight:400;font-size:1.05rem;letter-spacing:.42em;text-transform:uppercase;color:var(--ink-2)}
-#wordmark b{color:var(--ink);font-weight:500}
-#clock{font-family:var(--mono);font-size:.95rem;color:var(--ink-2);font-variant-numeric:tabular-nums}
-
-/* ---------- héro ---------- */
-#hero{text-align:center;padding:2vh 0 5vh}
-#trend{
-  display:inline-flex;align-items:center;gap:.5em;
-  font-size:.8rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;
-  color:var(--tide);
-  padding:.55em 1.2em;border-radius:99px;
-  border:1px solid rgba(110,231,210,.25);
-  background:rgba(110,231,210,.06);
-  box-shadow:0 0 24px rgba(110,231,210,.09) inset;
-}
-#next-label{margin-top:4.5vh;font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-3)}
-#next-time{
-  font-family:var(--serif);font-weight:300;font-style:italic;
-  font-size:clamp(4.6rem,20vw,7.5rem);line-height:1.05;
-  font-variant-numeric:tabular-nums;
-  color:var(--ink);
-  text-shadow:0 0 60px rgba(110,231,210,.25);
-}
-#next-detail{color:var(--ink-2);font-size:1.02rem}
-#next-detail b{color:var(--tide);font-weight:600}
-#countdown{margin-top:.5em;font-family:var(--mono);font-size:.92rem;color:var(--ink-3)}
-
-/* ---------- niveau vivant ---------- */
-#live{
-  margin:0 auto 5vh;max-width:340px;text-align:center;
-  padding:20px 24px;border-radius:20px;
-  background:var(--glass);border:1px solid var(--glass-edge);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-}
-#live-label{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-3)}
-#live-value{
-  font-family:var(--mono);font-size:2.5rem;font-weight:500;
-  font-variant-numeric:tabular-nums;color:var(--tide);
-  text-shadow:0 0 30px rgba(110,231,210,.35);
-}
-#live-value small{font-size:1.1rem;color:var(--ink-2);margin-left:.15em}
-#live-arrow{font-size:1.2rem;vertical-align:.35em;margin-left:.2em}
-
-/* ---------- sections verre ---------- */
-.card{
-  border-radius:22px;padding:22px 20px;margin-bottom:26px;
-  background:var(--glass);border:1px solid var(--glass-edge);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-}
-.card h2{
-  font-family:var(--serif);font-weight:400;font-size:1.15rem;font-style:italic;
-  color:var(--ink-2);margin-bottom:16px;
+/* ══════════════ LA SCÈNE (fixe, derrière tout) ══════════════ */
+#scene{position:fixed; inset:0; z-index:0; overflow:hidden;
+  background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-mid) 46%,var(--sky-low) 74%);
+  transition:background 3s linear;
 }
 
-/* ---------- courbe ---------- */
+/* astres */
+#sun{position:absolute; width:78px; height:78px; border-radius:50%;
+  background:radial-gradient(circle at 42% 40%, #fffdf2 0%, #ffedb8 55%, #ffc46a 100%);
+  box-shadow:0 0 60px 18px rgba(255,214,140,.55), 0 0 160px 70px rgba(255,190,110,.28);
+  opacity:var(--sun-op); transition:opacity 3s linear;}
+#moon{position:absolute; width:60px; height:60px; border-radius:50%;
+  background:radial-gradient(circle at 38% 34%, #fbf4dc 0%, #f2e7c4 45%, #cdbf94 100%);
+  box-shadow:0 0 40px 10px rgba(242,231,196,.18), 0 0 110px 34px rgba(242,231,196,.08);
+  opacity:var(--moon-op); transition:opacity 3s linear;}
+
+/* étoiles */
+.star{position:absolute; border-radius:50%; background:#cfe4ee;
+  animation:twinkle 4s ease-in-out infinite; opacity:calc(var(--star-op) * .6);}
+@keyframes twinkle{0%,100%{transform:scale(.6)}50%{transform:scale(1.15)}}
+
+/* nuages */
+.cloud{position:absolute; opacity:var(--cloud-op); transition:opacity 3s linear;
+  animation:cloud-drift linear infinite;}
+.cloud path{fill:var(--cloud)}
+@keyframes cloud-drift{from{transform:translateX(-32vw)}to{transform:translateX(132vw)}}
+
+/* goélands */
+.gull{position:absolute; width:34px; animation:gull-fly linear infinite; opacity:.85}
+.gull path{stroke:var(--ink-3); stroke-width:4.5; stroke-linecap:round; fill:none}
+.gull .wl{transform-origin:24px 16px; animation:flap .62s ease-in-out infinite alternate}
+.gull .wr{transform-origin:24px 16px; animation:flap .62s ease-in-out infinite alternate-reverse}
+@keyframes flap{from{transform:rotate(14deg)}to{transform:rotate(-16deg)}}
+@keyframes gull-fly{
+  0%{transform:translate(-8vw,0)} 25%{transform:translate(20vw,-3vh)}
+  50%{transform:translate(48vw,1vh)} 75%{transform:translate(76vw,-2vh)}
+  100%{transform:translate(108vw,.5vh)}}
+
+/* falaises du fjord — 3 couches, parallaxe au scroll */
+.cliff{position:absolute; left:0; right:0; bottom:0; width:100%; will-change:transform}
+.cliff svg{display:block; width:100%}
+#cliff-far svg{height:34vh} #cliff-mid svg{height:27vh} #cliff-near svg{height:20vh}
+#cliff-far  path{fill:var(--cliff-far)}
+#cliff-mid  path{fill:var(--cliff-mid)}
+#cliff-near path{fill:var(--cliff-near)}
+
+/* l'eau — sa hauteur suit la vraie marée */
+#water{position:absolute; left:0; right:0; bottom:0; height:24vh;
+  transition:height 1.2s linear; pointer-events:none;}
+#water .waves{position:absolute; bottom:0; width:200%; height:102%; left:0}
+#water .s1{animation:swell 13s linear infinite; opacity:.5}
+#water .s2{animation:swell 21s linear infinite reverse; opacity:.7}
+#water .s3{animation:swell 34s linear infinite}
+#water .p1{fill:var(--w1)} #water .p2{fill:var(--w2)} #water .p3{fill:var(--w3)}
+@keyframes swell{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#water::after{content:""; position:absolute; left:0; right:0; top:-1px; height:2px;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 55%,transparent),transparent);
+  filter:blur(1px);}
+
+/* bélugas — dos blanc qui fait surface (pas de nageoire dorsale : exact) */
+.beluga{position:absolute; bottom:52%; width:90px; opacity:0;
+  animation:surface 22s ease-in-out infinite;}
+.beluga path{fill:#eef4f6}
+.beluga .spout{fill:none; stroke:#dfeef2; stroke-width:2; stroke-linecap:round; opacity:0;
+  animation:spout 22s ease-out infinite;}
+@keyframes surface{
+  0%,7%{transform:translateY(46px) rotate(2deg); opacity:0}
+  12%{opacity:.95}
+  16%{transform:translateY(6px) rotate(-3deg)}
+  22%{transform:translateY(10px) rotate(-1deg); opacity:.95}
+  30%,100%{transform:translateY(50px) rotate(4deg); opacity:0}}
+@keyframes spout{0%,13%{opacity:0} 15%{opacity:.9} 22%,100%{opacity:0; transform:translateY(-14px)}}
+#beluga2{animation-delay:11s; width:64px; bottom:44%}
+#beluga2 .spout{animation-delay:11s}
+
+/* rivage + chiens */
+#shore{position:absolute; left:0; right:0; bottom:0; height:8vh; z-index:3;
+  background:var(--shore);
+  clip-path:polygon(0 42%, 12% 30%, 30% 38%, 52% 26%, 74% 36%, 100% 24%, 100% 100%, 0 100%);}
+#dogs{position:absolute; bottom:5.2vh; left:6vw; z-index:4;}
+.dog{position:absolute; bottom:0}
+.dog path,.dog rect{fill:var(--shore); filter:brightness(1.35)}
+.dog .leg{transform-box:fill-box; transform-origin:top center}
+.dog .l1{animation:step .5s ease-in-out infinite alternate}
+.dog .l2{animation:step .5s ease-in-out infinite alternate-reverse}
+.dog .tailwag{transform-box:fill-box; transform-origin:bottom left;
+  animation:wag 1.1s ease-in-out infinite alternate}
+@keyframes step{from{transform:rotate(11deg)}to{transform:rotate(-11deg)}}
+@keyframes wag{from{transform:rotate(-5deg)}to{transform:rotate(7deg)}}
+#dog-braque{width:96px; animation:stroll 96s ease-in-out infinite}
+#dog-blond{width:74px; left:82px; animation:stroll 96s ease-in-out infinite;
+  animation-delay:-1.2s}
+@keyframes stroll{
+  0%{transform:translateX(0) scaleX(1)}
+  46%{transform:translateX(52vw) scaleX(1)}
+  50%{transform:translateX(52vw) scaleX(-1)}
+  96%{transform:translateX(0) scaleX(-1)}
+  100%{transform:translateX(0) scaleX(1)}}
+.dog .body-bob{animation:bob .5s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(1.6px)}}
+
+/* grain de papier — tue le dégradé lisse « IA » */
+#grain{position:fixed; inset:0; z-index:40; pointer-events:none; opacity:.07;
+  mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+/* ══════════════ CONTENU ══════════════ */
+#app{position:relative; z-index:5}
+header{display:flex; justify-content:space-between; align-items:baseline;
+  padding:22px 24px 0; max-width:680px; margin:0 auto;}
+#wordmark{font-family:var(--serif); font-weight:400; font-size:1.02rem;
+  letter-spacing:.4em; text-transform:uppercase; color:var(--ink-2)}
+#wordmark b{color:var(--ink); font-weight:500}
+#clock{font-family:var(--mono); font-size:.95rem; color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+
+#hero{min-height:88svh; display:flex; flex-direction:column; align-items:center;
+  text-align:center; padding:7vh 20px 0;}
+#trend{display:inline-flex; align-items:center; gap:.5em;
+  font-size:.78rem; font-weight:600; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--ink); padding:.55em 1.3em; border-radius:99px;
+  border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);
+  background:color-mix(in srgb,var(--panel) 55%,transparent);}
+#next-label{margin-top:4vh; font-size:.78rem; letter-spacing:.3em;
+  text-transform:uppercase; color:var(--ink-2)}
+#next-time{font-family:var(--serif); font-weight:300; font-style:italic;
+  font-size:clamp(4.4rem,19vw,7.2rem); line-height:1.05;
+  font-variant-numeric:tabular-nums; color:var(--ink);
+  text-shadow:0 2px 26px color-mix(in srgb,var(--sky-top) 55%,transparent);}
+#next-detail{color:var(--ink-2); font-size:1.02rem}
+#next-detail b{color:var(--ink); font-weight:600}
+#countdown{margin-top:.45em; font-family:var(--mono); font-size:.92rem; color:var(--ink-2)}
+#live-line{margin-top:3.2vh; font-family:var(--mono); font-size:1.25rem;
+  color:var(--ink); font-variant-numeric:tabular-nums;}
+#live-line .lbl{display:block; font-size:.68rem; letter-spacing:.28em;
+  text-transform:uppercase; color:var(--ink-2); margin-bottom:.3em; font-family:var(--sans)}
+
+/* la feuille de détails qui recouvre la scène au scroll */
+#sheet{position:relative; z-index:6; background:var(--page);
+  border-radius:26px 26px 0 0; margin-top:5vh;
+  box-shadow:0 -18px 50px rgba(0,0,0,.28);
+  padding:34px 20px 46px; transition:background 3s linear;}
+#sheet-inner{max-width:680px; margin:0 auto}
+.card{border-radius:20px; padding:22px 20px; margin-bottom:24px;
+  background:var(--panel); border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);
+  transition:background 3s linear;}
+.card h2{font-family:var(--serif); font-weight:400; font-size:1.15rem;
+  font-style:italic; color:var(--ink-2); margin-bottom:16px;}
+
+/* courbe */
 #curve-wrap{position:relative}
-#curve{display:block;width:100%;height:auto;touch-action:pan-y}
-.axis-label{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
-.grid-line{stroke:rgba(255,255,255,.055);stroke-width:1}
-.tide-line{stroke:var(--tide);stroke-width:2;fill:none;stroke-linecap:round}
-.tide-area{fill:url(#areaGrad)}
-.extreme-label{font-family:var(--mono);font-size:10.5px;fill:var(--ink-2)}
-.extreme-dot{fill:var(--night-1);stroke:var(--tide);stroke-width:1.5}
-#now-dot{fill:var(--tide);stroke:var(--night-0);stroke-width:2}
-#now-pulse{fill:none;stroke:var(--tide);stroke-width:1.5;opacity:.8;transform-origin:center;animation:pulse 2.4s ease-out infinite}
+#curve{display:block; width:100%; height:auto; touch-action:pan-y}
+.axis-label{font-family:var(--mono); font-size:10px; fill:var(--ink-3)}
+.grid-line{stroke:color-mix(in srgb,var(--ink) 9%,transparent); stroke-width:1}
+.tide-line{stroke:var(--accent); stroke-width:2; fill:none; stroke-linecap:round}
+.extreme-label{font-family:var(--mono); font-size:10.5px; fill:var(--ink-2)}
+.extreme-dot{fill:var(--panel); stroke:var(--accent); stroke-width:1.5}
+#now-dot{fill:var(--accent); stroke:var(--panel); stroke-width:2}
+#now-pulse{fill:none; stroke:var(--accent); stroke-width:1.5; opacity:.8;
+  transform-origin:center; animation:pulse 2.4s ease-out infinite}
 @keyframes pulse{from{opacity:.7;stroke-width:2}to{opacity:0;stroke-width:.5}}
-#cross{stroke:rgba(255,255,255,.25);stroke-width:1;stroke-dasharray:3 3}
-#tooltip{
-  position:absolute;pointer-events:none;display:none;
-  font-family:var(--mono);font-size:.78rem;white-space:nowrap;
-  padding:.45em .8em;border-radius:10px;
-  background:rgba(4,11,22,.92);border:1px solid var(--glass-edge);
-  color:var(--ink);transform:translate(-50%,-130%);
-}
-#tooltip b{color:var(--tide)}
+#cross{stroke:color-mix(in srgb,var(--ink) 28%,transparent); stroke-width:1; stroke-dasharray:3 3}
+#tooltip{position:absolute; pointer-events:none; display:none;
+  font-family:var(--mono); font-size:.78rem; white-space:nowrap;
+  padding:.45em .8em; border-radius:10px; background:var(--panel);
+  border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);
+  color:var(--ink); transform:translate(-50%,-130%);}
+#tooltip b{color:var(--accent)}
 
-/* ---------- marées du jour / semaine ---------- */
-#today-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-.chip{
-  display:flex;flex-direction:column;gap:2px;align-items:center;
-  padding:14px 8px;border-radius:16px;
-  background:rgba(255,255,255,.035);border:1px solid var(--glass-edge);
-}
+/* marées du jour / semaine */
+#today-chips{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px}
+.chip{display:flex; flex-direction:column; gap:2px; align-items:center;
+  padding:14px 8px; border-radius:14px;
+  background:color-mix(in srgb,var(--ink) 5%,transparent);
+  border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);}
 .chip.past{opacity:.42}
-.chip .t{font-family:var(--mono);font-size:1.25rem;font-variant-numeric:tabular-nums}
-.chip .k{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
-.chip .m{font-size:.8rem;color:var(--ink-2)}
-.chip.high .t{color:var(--tide)}
-
-#week .day{padding:13px 2px;border-top:1px solid rgba(255,255,255,.06)}
+.chip .t{font-family:var(--mono); font-size:1.25rem; font-variant-numeric:tabular-nums}
+.chip .k{font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3)}
+.chip .m{font-size:.8rem; color:var(--ink-2)}
+.chip.high .t{color:var(--accent)}
+#week .day{padding:13px 2px; border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
 #week .day:first-child{border-top:none}
-#week .dname{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
-#week .evts{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:.86rem;font-variant-numeric:tabular-nums}
+#week .dname{font-size:.78rem; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:7px}
+#week .evts{display:flex; flex-wrap:wrap; gap:6px 16px;
+  font-family:var(--mono); font-size:.86rem; font-variant-numeric:tabular-nums}
 #week .evts span{color:var(--ink-2)}
-#week .evts .hi{color:var(--tide)}
+#week .evts .hi{color:var(--accent)}
 
-/* ---------- états ---------- */
-#loading,#error{text-align:center;padding:9vh 24px;color:var(--ink-2)}
-#loading .wave-dots{font-size:1.6rem;letter-spacing:.3em;animation:twinkle 1.6s ease-in-out infinite}
+/* états */
+#loading,#error{text-align:center; padding:9vh 24px; color:var(--ink-2)}
+#loading .wave-dots{font-size:1.6rem; animation:twinkle 1.6s ease-in-out infinite}
 #error{display:none}
-#error h2{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--danger);margin-bottom:.5em}
-#error p{font-size:.95rem;max-width:38ch;margin:0 auto 1.4em;line-height:1.55}
-#retry{
-  font:inherit;font-weight:600;color:var(--night-0);cursor:pointer;
-  background:var(--tide);border:none;border-radius:99px;padding:.7em 2em;
-}
-footer{
-  text-align:center;font-size:.72rem;color:var(--ink-3);
-  padding-top:10px;line-height:1.8;
-}
+#error h2{font-family:var(--serif); font-style:italic; font-weight:400;
+  color:#f4a09c; margin-bottom:.5em}
+#error p{font-size:.95rem; max-width:38ch; margin:0 auto 1.4em; line-height:1.55}
+#retry{font:inherit; font-weight:600; color:var(--page); cursor:pointer;
+  background:var(--accent); border:none; border-radius:99px; padding:.7em 2em;}
+footer{text-align:center; font-size:.72rem; color:var(--ink-3);
+  padding-top:8px; line-height:1.8;}
 footer a{color:var(--ink-3)}
 
-/* ---------- océan animé ---------- */
-#ocean{
-  position:fixed;left:0;right:0;bottom:0;z-index:0;
-  height:26vh; /* piloté en JS selon le niveau réel */
-  transition:height 1.2s linear;
-  pointer-events:none;
-}
-#ocean svg{position:absolute;bottom:0;width:200%;height:100%;left:0}
-.w1{animation:drift 13s linear infinite;opacity:.35}
-.w2{animation:drift 21s linear infinite reverse;opacity:.5}
-.w3{animation:drift 34s linear infinite;opacity:.9}
-@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-#ocean::after{ /* lueur de surface */
-  content:"";position:absolute;left:0;right:0;top:-2px;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(110,231,210,.5),transparent);
-  filter:blur(1px);
-}
 @media (prefers-reduced-motion:reduce){
-  .w1,.w2,.w3,#aurora,.star,#now-pulse,#loading .wave-dots{animation:none}
+  .star,.cloud,.gull,.gull .wl,.gull .wr,.beluga,.beluga .spout,
+  #water .s1,#water .s2,#water .s3,#now-pulse,#loading .wave-dots,
+  .dog,.dog .l1,.dog .l2,.dog .tailwag,.dog .body-bob{animation:none}
+  .beluga{opacity:.9; transform:translateY(8px)}
 }
 @media (max-width:420px){
-  #moon{width:56px;height:56px;top:5vh}
+  #sun{width:58px;height:58px} #moon{width:46px;height:46px}
+  #dog-braque{width:70px} #dog-blond{width:54px; left:62px}
   .card{padding:18px 15px}
 }
 </style>
 </head>
 <body>
 
-<div id="sky"><div id="aurora"></div><div id="moon"></div></div>
+<!-- ═════════ SCÈNE ILLUSTRÉE ═════════ -->
+<div id="scene" aria-hidden="true">
+  <div id="sun"></div>
+  <div id="moon"></div>
 
+  <svg class="cloud" style="top:9vh; width:190px; animation-duration:210s" viewBox="0 0 200 60">
+    <path d="M28 44 Q20 28 38 24 Q42 8 62 12 Q74 0 92 10 Q112 4 118 20 Q140 18 142 34 Q156 36 152 46 Q100 52 28 44 Z"/>
+  </svg>
+  <svg class="cloud" style="top:18vh; width:130px; animation-duration:150s; animation-delay:-60s" viewBox="0 0 200 60">
+    <path d="M36 46 Q24 32 44 26 Q50 10 72 16 Q88 6 102 16 Q124 12 128 30 Q146 32 140 46 Q90 52 36 46 Z"/>
+  </svg>
+  <svg class="cloud" style="top:5vh; width:100px; animation-duration:260s; animation-delay:-140s" viewBox="0 0 200 60">
+    <path d="M40 46 Q30 34 48 28 Q56 14 76 20 Q94 12 106 22 Q126 20 128 36 Q142 38 136 48 Q92 52 40 46 Z"/>
+  </svg>
+
+  <svg class="gull" style="top:16vh; animation-duration:44s" viewBox="0 0 48 32">
+    <path class="wl" d="M24 16 Q14 6 3 10"/><path class="wr" d="M24 16 Q34 6 45 10"/>
+  </svg>
+  <svg class="gull" style="top:23vh; animation-duration:58s; animation-delay:-25s; width:24px" viewBox="0 0 48 32">
+    <path class="wl" d="M24 16 Q14 6 3 10"/><path class="wr" d="M24 16 Q34 6 45 10"/>
+  </svg>
+
+  <div class="cliff" id="cliff-far"><svg viewBox="0 0 1440 300" preserveAspectRatio="none" >
+    <path d="M0 300 L0 170 Q90 120 190 138 Q260 90 360 110 Q430 70 520 96 L600 130 Q700 88 800 112 Q900 60 1010 92 Q1100 66 1200 100 Q1320 80 1440 128 L1440 300 Z"/>
+  </svg></div>
+  <div class="cliff" id="cliff-mid"><svg viewBox="0 0 1440 260" preserveAspectRatio="none">
+    <path d="M0 260 L0 150 Q120 96 240 126 Q330 74 450 108 Q560 66 660 110 L760 150 Q880 96 990 128 Q1110 82 1230 122 Q1340 100 1440 140 L1440 260 Z"/>
+  </svg></div>
+  <div class="cliff" id="cliff-near"><svg viewBox="0 0 1440 210" preserveAspectRatio="none">
+    <path d="M0 210 L0 120 Q150 60 300 100 Q420 52 560 96 Q700 44 840 92 Q980 56 1120 100 Q1290 64 1440 110 L1440 210 Z"/>
+  </svg></div>
+
+  <div id="water">
+    <svg class="waves" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <g class="s1"><path class="p1" d="M0,96 C240,64 480,128 720,96 C960,64 1200,128 1440,96 L1440,320 L0,320 Z M1440,96 C1680,64 1920,128 2160,96 C2400,64 2640,128 2880,96 L2880,320 L1440,320 Z"/></g>
+      <g class="s2"><path class="p2" d="M0,128 C240,96 480,170 720,128 C960,96 1200,170 1440,128 L1440,320 L0,320 Z M1440,128 C1680,96 1920,170 2160,128 C2400,96 2640,170 2880,128 L2880,320 L1440,320 Z"/></g>
+      <g class="s3"><path class="p3" d="M0,160 C240,130 480,200 720,160 C960,130 1200,200 1440,160 L1440,320 L0,320 Z M1440,160 C1680,130 1920,200 2160,160 C2400,130 2640,200 2880,160 L2880,320 L1440,320 Z"/></g>
+    </svg>
+
+    <svg class="beluga" id="beluga1" style="left:44%" viewBox="0 0 100 34">
+      <path class="spout" d="M30 8 q-2 -5 1 -8 M34 8 q0 -4 3 -7 M38 9 q2 -4 6 -5"/>
+      <path d="M2 30 Q6 16 20 12 Q34 8 50 12 Q66 15 74 22 Q84 20 92 14 Q90 24 80 27 Q60 32 36 31 Q14 31 2 30 Z"/>
+    </svg>
+    <svg class="beluga" id="beluga2" style="left:58%" viewBox="0 0 100 34">
+      <path class="spout" d="M30 8 q-2 -5 1 -8 M34 8 q0 -4 3 -7 M38 9 q2 -4 6 -5"/>
+      <path d="M2 30 Q6 16 20 12 Q34 8 50 12 Q66 15 74 22 Q84 20 92 14 Q90 24 80 27 Q60 32 36 31 Q14 31 2 30 Z"/>
+    </svg>
+  </div>
+
+  <div id="shore"></div>
+  <div id="dogs">
+    <!-- Braque d'Auvergne : le grand — poitrine profonde, oreilles tombantes, queue droite -->
+    <svg class="dog" id="dog-braque" viewBox="0 0 130 80">
+      <g class="body-bob">
+        <path class="tailwag" d="M8 26 Q-2 20 2 10 L10 19 Q12 24 8 26 Z"/>
+        <path d="M8 26 Q20 16 42 18 L84 18 Q94 8 106 6 L122 10 Q128 14 123 19 L114 21 Q112 32 103 34 L94 35 Q90 44 48 43 Q24 43 12 34 Q6 30 8 26 Z"/>
+        <path d="M104 10 Q99 26 106 33 Q113 28 112 16 Z"/>
+      </g>
+      <g class="leg l2"><rect x="28" y="40" width="8" height="36" rx="4"/></g>
+      <g class="leg l1"><rect x="44" y="40" width="8" height="36" rx="4"/></g>
+      <g class="leg l2"><rect x="86" y="34" width="8" height="42" rx="4"/></g>
+      <g class="leg l1"><rect x="100" y="34" width="8" height="42" rx="4"/></g>
+    </svg>
+    <!-- Blond (type labrador) : plus petit, oreilles tombantes, queue souple -->
+    <svg class="dog" id="dog-blond" viewBox="0 0 120 68">
+      <g class="body-bob">
+        <path class="tailwag" d="M12 26 Q2 18 6 8 Q14 12 16 22 Q16 25 12 26 Z"/>
+        <path d="M12 26 Q24 18 44 20 L76 20 Q82 8 92 5 L106 8 Q112 12 108 17 L100 19 Q99 28 91 31 L85 33 Q82 44 44 43 Q24 43 14 34 Q10 30 12 26 Z"/>
+        <path d="M90 8 Q86 20 92 26 Q98 22 97 12 Z"/>
+      </g>
+      <g class="leg l1"><rect x="28" y="40" width="7" height="26" rx="3.5"/></g>
+      <g class="leg l2"><rect x="42" y="40" width="7" height="26" rx="3.5"/></g>
+      <g class="leg l1"><rect x="78" y="36" width="7" height="30" rx="3.5"/></g>
+      <g class="leg l2"><rect x="90" y="36" width="7" height="30" rx="3.5"/></g>
+    </svg>
+  </div>
+</div>
+
+<div id="grain"></div>
+
+<!-- ═════════ CONTENU ═════════ -->
 <div id="app">
   <header>
     <div id="wordmark"><b>Tadoussac</b> · marées</div>
@@ -226,162 +357,230 @@ footer a{color:var(--ink-3)}
       <div id="next-time">--:--</div>
       <div id="next-detail"></div>
       <div id="countdown"></div>
+      <div id="live-line"><span class="lbl">niveau actuel</span><span id="live-value">-,--- m</span></div>
     </section>
 
-    <section id="live" aria-live="off">
-      <div id="live-label">niveau actuel</div>
-      <div id="live-value">-,--- <small>m</small><span id="live-arrow"></span></div>
-    </section>
+    <div id="sheet"><div id="sheet-inner">
+      <section class="card">
+        <h2>La journée, heure par heure</h2>
+        <div id="curve-wrap">
+          <svg id="curve" viewBox="0 0 640 254" preserveAspectRatio="none" aria-label="Courbe du niveau de la marée aujourd'hui"></svg>
+          <div id="tooltip"></div>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>La journée, heure par heure</h2>
-      <div id="curve-wrap">
-        <svg id="curve" viewBox="0 0 640 254" preserveAspectRatio="none" aria-label="Courbe du niveau de la marée aujourd'hui"></svg>
-        <div id="tooltip"></div>
-      </div>
-    </section>
+      <section class="card">
+        <h2>Marées d'aujourd'hui</h2>
+        <div id="today-chips"></div>
+      </section>
 
-    <section class="card">
-      <h2>Marées d'aujourd'hui</h2>
-      <div id="today-chips"></div>
-    </section>
+      <section class="card">
+        <h2>Les sept prochains jours</h2>
+        <div id="week"></div>
+      </section>
 
-    <section class="card">
-      <h2>Les sept prochains jours</h2>
-      <div id="week"></div>
-    </section>
-
-    <footer>
-      Prédictions officielles du Service hydrographique du Canada — station Tadoussac (03425)<br>
-      Données : <a href="https://www.tides.gc.ca" rel="noopener">Pêches et Océans Canada</a>
-    </footer>
+      <footer>
+        Prédictions officielles du Service hydrographique du Canada — station Tadoussac (03425)<br>
+        Données : <a href="https://www.tides.gc.ca" rel="noopener">Pêches et Océans Canada</a>
+      </footer>
+    </div></div>
   </div>
-</div>
-
-<div id="ocean" aria-hidden="true">
-  <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
-    <defs>
-      <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#0e3a4d"/>
-        <stop offset="1" stop-color="#051523"/>
-      </linearGradient>
-    </defs>
-    <g class="w1"><path fill="#123f52" d="M0,96 C240,64 480,128 720,96 C960,64 1200,128 1440,96 L1440,320 L0,320 Z M1440,96 C1680,64 1920,128 2160,96 C2400,64 2640,128 2880,96 L2880,320 L1440,320 Z" transform="scale(1,1)"/></g>
-    <g class="w2"><path fill="#0d3145" d="M0,128 C240,96 480,170 720,128 C960,96 1200,170 1440,128 L1440,320 L0,320 Z M1440,128 C1680,96 1920,170 2160,128 C2400,96 2640,170 2880,128 L2880,320 L1440,320 Z"/></g>
-    <g class="w3"><path fill="url(#wg)" d="M0,160 C240,130 480,200 720,160 C960,130 1200,200 1440,160 L1440,320 L0,320 Z M1440,160 C1680,130 1920,200 2160,160 C2400,130 2640,200 2880,160 L2880,320 L1440,320 Z"/></g>
-  </svg>
 </div>
 
 <script>
 "use strict";
-const API   = "https://api-iwls.dfo-mpo.gc.ca/api/v1";
-const STN   = "5cebf1df3d0f4a073c4bbbaf";       // Tadoussac 03425 — données publiques MPO
-const TZ    = "America/Toronto";
-const $     = id => document.getElementById(id);
+const API = "https://api-iwls.dfo-mpo.gc.ca/api/v1";
+const STN = "5cebf1df3d0f4a073c4bbbaf";      // Tadoussac 03425 — données publiques MPO
+const TZ  = "America/Toronto";
+const LAT = 48.138, LON = -69.714;
+const $ = id => document.getElementById(id);
 
 /* ---------- temps : tout est calé sur le fuseau de Tadoussac ---------- */
 const fmtTime  = new Intl.DateTimeFormat("fr-CA",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false});
-const fmtClockP = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
-const fmtClock = {format:d=>fmtClockP.format(d).replace(/^24/,"00")}; // HH:MM:SS compact
+const fmtClockP= new Intl.DateTimeFormat("en-CA",{timeZone:TZ,hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+const fmtClock = {format:d=>fmtClockP.format(d).replace(/^24/,"00")};
 const fmtDay   = new Intl.DateTimeFormat("fr-CA",{timeZone:TZ,weekday:"long",day:"numeric",month:"long"});
 const fmtNum   = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtNum3  = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:3,maximumFractionDigits:3});
 
-function tzOffsetMs(date){ // décalage réel du fuseau à cette date (gère EDT/EST)
+function tzOffsetMs(date){
   const p = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(date)
     .reduce((a,x)=>(a[x.type]=x.value,a),{});
   const asUTC = Date.UTC(p.year,p.month-1,p.day,p.hour==="24"?0:p.hour,p.minute,p.second);
   return asUTC - date.getTime();
 }
-function localMidnightUTC(){ // minuit à Tadoussac, en ms UTC
+function localMidnightUTC(){
   const now = new Date(), off = tzOffsetMs(now);
   const local = new Date(now.getTime()+off);
   return Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate()) - off;
 }
 const dayKey = ms => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,dateStyle:"short"}).format(ms);
 
-/* ---------- données ---------- */
-let series = [];   // [{t(ms), v(m)}] — niveaux à la minute, aujourd'hui
-let events = [];   // [{t(ms), v(m), hi(bool)}] — pleines/basses mers 7 jours
-let dayMin = 0, dayMax = 1;
+/* ---------- position du soleil (algorithme NOAA simplifié) ---------- */
+function solarPos(date){
+  const rad = Math.PI/180;
+  const n = date.getTime()/864e5 - 10957.5;               // jours depuis J2000
+  const L = (280.460 + 0.9856474*n) % 360;
+  const g = ((357.528 + 0.9856003*n) % 360) * rad;
+  const lambda = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * rad;
+  const eps = 23.439 * rad;
+  const dec = Math.asin(Math.sin(eps)*Math.sin(lambda));
+  const ra  = Math.atan2(Math.cos(eps)*Math.sin(lambda), Math.cos(lambda));
+  const gmst = ((18.697374558 + 24.06570982441908*n) % 24 + 24) % 24;
+  const lst = (gmst + LON/15 + 24) % 24;
+  let H = lst*15*rad - ra;
+  H = ((H + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+  const alt = Math.asin(Math.sin(LAT*rad)*Math.sin(dec) + Math.cos(LAT*rad)*Math.cos(dec)*Math.cos(H));
+  return {alt: alt/rad, H};
+}
 
+/* ---------- moteur de palette : le ciel suit le vrai soleil ---------- */
+/* Chaque palette : [skyTop, skyMid, skyLow, ink, ink2, panel, page, waterBase, cloud], + scalaires */
+const PALS = {
+  night:   {c:[[5,10,24],[10,25,48],[22,48,80],[230,240,247],[150,172,192],[10,20,36],[7,14,26],[18,63,82],[30,50,75]],
+            cloudOp:.45, starOp:1, sunOp:0, accent:[110,231,210]},
+  twilight:{c:[[38,42,88],[136,84,112],[242,152,106],[255,241,231],[228,190,180],[46,38,68],[36,30,56],[74,64,116],[210,130,120]],
+            cloudOp:.75, starOp:.35, sunOp:1, accent:[255,178,128]},
+  golden:  {c:[[72,122,176],[232,150,96],[255,202,122],[255,248,235],[235,215,190],[52,60,94],[42,50,80],[96,92,142],[255,190,140]],
+            cloudOp:.85, starOp:0, sunOp:1, accent:[255,196,120]},
+  day:     {c:[[96,160,210],[150,200,232],[214,236,246],[20,42,58],[55,86,106],[244,240,230],[233,228,215],[45,125,170],[255,255,255]],
+            cloudOp:.92, starOp:0, sunOp:1, accent:[13,124,110]},
+};
+const lerp=(a,b,t)=>a+(b-a)*t;
+const mixC=(a,b,t)=>a.map((v,i)=>Math.round(lerp(v,b[i],t)));
+const css=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+function mixPal(p,q,t){
+  return {c:p.c.map((col,i)=>mixC(col,q.c[i],t)),
+    cloudOp:lerp(p.cloudOp,q.cloudOp,t), starOp:lerp(p.starOp,q.starOp,t),
+    sunOp:lerp(p.sunOp,q.sunOp,t), accent:mixC(p.accent,q.accent,t)};
+}
+function paletteFor(alt){
+  if(alt<=-10) return PALS.night;
+  if(alt<=-2)  return mixPal(PALS.night,PALS.twilight,(alt+10)/8);
+  if(alt<=6)   return mixPal(PALS.twilight,PALS.golden,(alt+2)/8);
+  if(alt<=18)  return mixPal(PALS.golden,PALS.day,(alt-6)/12);
+  return PALS.day;
+}
+
+/* debug : ?t=HH ou ?t=HH.5 force l'heure locale de la scène (les données restent réelles) */
+const forcedHour = (()=>{ const v=new URLSearchParams(location.search).get("t");
+  return v===null?null:parseFloat(v); })();
+function sceneDate(){
+  if(forcedHour===null) return new Date();
+  const now=new Date(), off=tzOffsetMs(now), local=new Date(now.getTime()+off);
+  const utcMid=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate())-off;
+  return new Date(utcMid + forcedHour*36e5);
+}
+
+function updateSky(){
+  const d = sceneDate();
+  const sun = solarPos(d);
+  const P = paletteFor(sun.alt);
+  const R = document.documentElement.style;
+  const names=["--sky-top","--sky-mid","--sky-low","--ink","--ink-2","--panel","--page","--wbase","--cloud"];
+  P.c.forEach((col,i)=>R.setProperty(names[i],css(col)));
+  const ink=P.c[3], deep=mixC(P.c[6],[0,0,0],.55), low=P.c[2], wb=P.c[7];
+  R.setProperty("--ink-3", css(mixC(P.c[4],P.c[6],.35)));
+  R.setProperty("--accent", css(P.accent));
+  R.setProperty("--cliff-far",  css(mixC(low,deep,.34)));
+  R.setProperty("--cliff-mid",  css(mixC(low,deep,.58)));
+  R.setProperty("--cliff-near", css(mixC(low,deep,.78)));
+  R.setProperty("--shore",      css(mixC(low,deep,.9)));
+  R.setProperty("--w1", css(mixC(wb,low,.3)));
+  R.setProperty("--w2", css(wb));
+  R.setProperty("--w3", css(mixC(wb,deep,.4)));
+  R.setProperty("--cloud-op",P.cloudOp);
+  R.setProperty("--star-op",P.starOp);
+  document.querySelector('meta[name="theme-color"]').content = css(P.c[0]);
+
+  // trajectoire : angle horaire -π..π  →  est..ouest ; hauteur → altitude.
+  // Lune stylisée : miroir du soleil (haute quand le soleil est bas) — pas
+  // d'éphéméride lunaire, c'est une scène, pas un planétarium.
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const fx = h => (h/Math.PI+1)/2;                   // 0..1 gauche→droite
+  const skyY = a => 66 - clamp(a,-6,58)*0.92;        // % du haut (horizon ≈ 72 %)
+  R.setProperty("--sun-op", String(P.sunOp * clamp((sun.alt+7)/6,0,1)));
+  $("sun").style.left = `calc(${(fx(sun.H)*88+6).toFixed(2)}% - 39px)`;
+  $("sun").style.top  = `${skyY(sun.alt).toFixed(2)}%`;
+  let mH = sun.H + Math.PI;
+  mH = ((mH + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+  const mAlt = clamp(-sun.alt, -10, 42);
+  // la lune s'estompe au crépuscule pour ne pas faire « deux soleils »
+  R.setProperty("--moon-op", String(clamp((mAlt+2)/8,0,1) * Math.max(.3,P.starOp)));
+  $("moon").style.left = `calc(${(fx(mH)*88+6).toFixed(2)}% - 30px)`;
+  $("moon").style.top  = `${skyY(mAlt).toFixed(2)}%`;
+}
+
+/* ---------- données ---------- */
+let series=[], events=[], dayMin=0, dayMax=1;
 async function fetchJSON(url){
   const r = await fetch(url);
   if(!r.ok) throw new Error("HTTP "+r.status);
   return r.json();
 }
 const iso = ms => new Date(ms).toISOString().replace(/\.\d+Z/,"Z");
-
 async function loadData(){
-  const t0 = localMidnightUTC(), t1 = t0 + 864e5, t7 = t0 + 7*864e5;
-  const [wlp, hilo] = await Promise.all([
+  const t0=localMidnightUTC(), t1=t0+864e5, t7=t0+7*864e5;
+  const [wlp,hilo] = await Promise.all([
     fetchJSON(`${API}/stations/${STN}/data?time-series-code=wlp&from=${iso(t0)}&to=${iso(t1)}`),
     fetchJSON(`${API}/stations/${STN}/data?time-series-code=wlp-hilo&from=${iso(t0)}&to=${iso(t7)}`),
   ]);
-  if(!wlp.length || hilo.length < 2) throw new Error("données vides");
+  if(!wlp.length || hilo.length<2) throw new Error("données vides");
   series = wlp.map(d=>({t:Date.parse(d.eventDate), v:d.value}));
   dayMin = Math.min(...series.map(p=>p.v));
   dayMax = Math.max(...series.map(p=>p.v));
-  // pleine/basse par alternance (même logique que l'endpoint wlp-hilo)
   const firstLow = hilo[0].value < hilo[1].value;
-  events = hilo.map((d,i)=>({t:Date.parse(d.eventDate), v:d.value, hi: firstLow ? i%2===1 : i%2===0}));
+  events = hilo.map((d,i)=>({t:Date.parse(d.eventDate), v:d.value, hi:firstLow ? i%2===1 : i%2===0}));
 }
-
-/* ---------- interpolation du niveau à la seconde ---------- */
 function levelAt(ms){
   if(!series.length) return null;
   if(ms<=series[0].t) return series[0].v;
   if(ms>=series[series.length-1].t) return series[series.length-1].v;
   const i = Math.min(series.length-2, Math.max(0, Math.floor((ms-series[0].t)/6e4)));
-  const a = series[i], b = series[i+1];
+  const a=series[i], b=series[i+1];
   return a.v + (b.v-a.v)*((ms-a.t)/(b.t-a.t));
 }
 
-/* ---------- rendu ---------- */
+/* ---------- courbe ---------- */
 const W=640, H=254, PX=34, PT=30, PB=46;
-const xOf = ms => PX + (ms - series[0].t)/(series[series.length-1].t - series[0].t)*(W-2*PX);
-const yOf = v  => { const pad=(dayMax-dayMin)*.14; return PT + (1-(v-(dayMin-pad))/((dayMax+pad)-(dayMin-pad)))*(H-PT-PB); };
-
+const xOf = ms => PX + (ms-series[0].t)/(series[series.length-1].t-series[0].t)*(W-2*PX);
+const yOf = v => { const pad=(dayMax-dayMin)*.14;
+  return PT + (1-(v-(dayMin-pad))/((dayMax+pad)-(dayMin-pad)))*(H-PT-PB); };
 function renderCurve(){
-  const svg = $("curve");
-  const step = 5; // un point aux 5 min suffit pour le tracé
-  let line="", area="";
+  const svg=$("curve"), step=5;
+  let line="";
   for(let i=0;i<series.length;i+=step){
-    const p=series[i], c=`${xOf(p.t).toFixed(1)},${yOf(p.v).toFixed(1)}`;
-    line += (i?"L":"M")+c;
+    const p=series[i];
+    line += (i?"L":"M")+`${xOf(p.t).toFixed(1)},${yOf(p.v).toFixed(1)}`;
   }
   const last=series[series.length-1];
   line += `L${xOf(last.t).toFixed(1)},${yOf(last.v).toFixed(1)}`;
-  area = line + `L${(W-PX)},${H-PB}L${PX},${H-PB}Z`;
-
+  const area = line + `L${W-PX},${H-PB}L${PX},${H-PB}Z`;
   const grid=[0,6,12,18,24].map(h=>{
     const x=PX+h/24*(W-2*PX);
     return `<line class="grid-line" x1="${x}" y1="${PT}" x2="${x}" y2="${H-PB}"/>
             <text class="axis-label" x="${x}" y="${H-8}" text-anchor="middle">${String(h).padStart(2,"0")} h</text>`;
   }).join("");
-
-  const todayEvts = events.filter(e=>e.t>=series[0].t && e.t<=last.t);
-  const labels = todayEvts.map(e=>{
+  const labels = events.filter(e=>e.t>=series[0].t && e.t<=last.t).map(e=>{
     const x=xOf(e.t), y=yOf(e.v), up=e.hi;
-    const lx=Math.max(PX+24, Math.min(W-PX-24, x)); // étiquettes toujours dans le cadre
+    const lx=Math.max(PX+24, Math.min(W-PX-24, x));
     return `<circle class="extreme-dot" cx="${x}" cy="${y}" r="3.5"/>
             <text class="extreme-label" x="${lx}" y="${up? y-16 : y+22}" text-anchor="middle">${fmtTime.format(e.t)}</text>
             <text class="extreme-label" x="${lx}" y="${up? y-6 : y+32}" text-anchor="middle" opacity=".65">${fmtNum.format(e.v)} m</text>`;
   }).join("");
-
   svg.innerHTML = `
     <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="rgba(110,231,210,.22)"/><stop offset="1" stop-color="rgba(110,231,210,0)"/>
+      <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue("--accent")}" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
     </linearGradient></defs>
     ${grid}
-    <path class="tide-area" d="${area}"/>
+    <path fill="url(#areaGrad)" d="${area}"/>
     <path class="tide-line" d="${line}"/>
     ${labels}
     <line id="cross" y1="${PT}" y2="${H-PB}" visibility="hidden"/>
     <circle id="now-pulse" r="6"/>
     <circle id="now-dot" r="4.5"/>`;
 }
-
 function renderChips(){
   const now=Date.now(), last=series[series.length-1];
   $("today-chips").innerHTML = events
@@ -392,7 +591,6 @@ function renderChips(){
         <span class="m">${fmtNum.format(e.v)} m</span>
       </div>`).join("");
 }
-
 function renderWeek(){
   const groups={};
   for(const e of events){ (groups[dayKey(e.t)] ??= []).push(e); }
@@ -405,18 +603,15 @@ function renderWeek(){
     </div>`).join("");
 }
 
-/* ---------- vivant : compteur, océan, point "maintenant" ---------- */
+/* ---------- vivant : compteur, eau, point "maintenant" ---------- */
 function updateLive(){
-  const now = Date.now();
+  const now=Date.now();
   $("clock").textContent = fmtClock.format(now);
   const lvl = levelAt(now);
   if(lvl==null) return;
-
-  const soon = levelAt(now+9e5); // tendance sur 15 min
-  const rising = soon > lvl;
-  $("live-value").innerHTML = `${fmtNum3.format(lvl)} <small>m</small><span id="live-arrow">${rising?"↗":"↘"}</span>`;
+  const rising = levelAt(now+9e5) > lvl;
+  $("live-value").textContent = `${fmtNum3.format(lvl)} m ${rising?"↗":"↘"}`;
   $("trend").textContent = rising ? "Marée montante ↗" : "Marée descendante ↘";
-
   const next = events.find(e=>e.t>now);
   if(next){
     $("next-time").textContent = fmtTime.format(next.t);
@@ -424,15 +619,11 @@ function updateLive(){
     const mins = Math.round((next.t-now)/6e4);
     $("countdown").textContent = `dans ${Math.floor(mins/60)} h ${String(mins%60).padStart(2,"0")}`;
   }
-
-  // l'océan monte et descend avec la vraie marée (8 → 30 % de l'écran)
-  const frac = Math.max(0, Math.min(1, (lvl-dayMin)/(dayMax-dayMin||1)));
-  $("ocean").style.height = (8 + frac*22) + "vh";
-
-  // point "maintenant" sur la courbe
+  const frac = Math.max(0, Math.min(1,(lvl-dayMin)/(dayMax-dayMin||1)));
+  $("water").style.height = (11 + frac*17) + "vh";
   const nd=$("now-dot"), np=$("now-pulse");
   if(nd && now>=series[0].t && now<=series[series.length-1].t){
-    const x=xOf(now), y=yOf(lvl);
+    const x=xOf(now), y=yOf(levelAt(now));
     nd.setAttribute("cx",x); nd.setAttribute("cy",y);
     np.setAttribute("cx",x); np.setAttribute("cy",y);
   }
@@ -440,7 +631,7 @@ function updateLive(){
 
 /* ---------- tooltip crosshair ---------- */
 function bindTooltip(){
-  const svg=$("curve"), tip=$("tooltip"), wrap=$("curve-wrap");
+  const svg=$("curve"), tip=$("tooltip");
   function show(ev){
     const r=svg.getBoundingClientRect();
     const px=(ev.clientX-r.left)/r.width*W;
@@ -448,7 +639,7 @@ function bindTooltip(){
     const t=series[0].t + (px-PX)/(W-2*PX)*(series[series.length-1].t-series[0].t);
     const v=levelAt(t);
     const cross=$("cross");
-    cross.setAttribute("x1",px);cross.setAttribute("x2",px);cross.setAttribute("visibility","visible");
+    cross.setAttribute("x1",px); cross.setAttribute("x2",px); cross.setAttribute("visibility","visible");
     tip.style.display="block";
     tip.style.left=(px/W*100)+"%";
     tip.style.top=(yOf(v)/H*100)+"%";
@@ -460,18 +651,36 @@ function bindTooltip(){
   svg.addEventListener("pointerleave",hide);
 }
 
-/* ---------- étoiles ---------- */
+/* ---------- étoiles + parallaxe ---------- */
 (function stars(){
-  const sky=$("sky"), n=90, frag=document.createDocumentFragment();
-  for(let i=0;i<n;i++){
+  const scene=$("scene"), frag=document.createDocumentFragment();
+  for(let i=0;i<80;i++){
     const s=document.createElement("div");
     s.className="star";
     const size=Math.random()*1.8+.6;
-    s.style.cssText=`width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*62}%;animation-delay:${(Math.random()*4).toFixed(2)}s;animation-duration:${(2.5+Math.random()*4).toFixed(2)}s`;
+    s.style.cssText=`width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*55}%;animation-delay:${(Math.random()*4).toFixed(2)}s;animation-duration:${(2.5+Math.random()*4).toFixed(2)}s`;
     frag.appendChild(s);
   }
-  sky.appendChild(frag);
+  scene.insertBefore(frag, scene.querySelector(".cloud"));
 })();
+(function parallax(){
+  const far=$("cliff-far"), mid=$("cliff-mid"), near=$("cliff-near");
+  let ticking=false;
+  addEventListener("scroll",()=>{
+    if(ticking) return; ticking=true;
+    requestAnimationFrame(()=>{
+      const y=scrollY;
+      far.style.transform=`translateY(${y*.06}px)`;
+      mid.style.transform=`translateY(${y*.13}px)`;
+      near.style.transform=`translateY(${y*.22}px)`;
+      ticking=false;
+    });
+  },{passive:true});
+})();
+/* les bélugas changent de place à chaque plongée */
+document.querySelectorAll(".beluga").forEach(b=>{
+  b.addEventListener("animationiteration",()=>{ b.style.left=(34+Math.random()*44)+"%"; });
+});
 
 /* ---------- cycle de vie ---------- */
 let liveTimer=null;
@@ -494,11 +703,12 @@ async function init(){
   }
 }
 $("retry").addEventListener("click",init);
-setInterval(()=>{ if(!document.hidden) loadData().then(()=>{renderCurve();renderChips();renderWeek();}).catch(()=>{}) }, 18e5); // rafraîchit les données aux 30 min
+setInterval(()=>{ if(!document.hidden) loadData().then(()=>{renderCurve();renderChips();renderWeek();}).catch(()=>{}) },18e5);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden && series.length){
-  // au retour sur l'onglet : si les données du jour sont périmées (minuit passé), recharger
   if(Date.now() > series[series.length-1].t) init();
 }});
+updateSky();
+setInterval(updateSky, 60e3);
 init();
 </script>
 </body>
