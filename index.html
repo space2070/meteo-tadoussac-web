@@ -17,8 +17,9 @@
   --sky-top:#050a18; --sky-mid:#0a1930; --sky-low:#163050;
   --ink:#e6f0f7; --ink-2:#96acc0; --ink-3:#607a92;
   --panel:#0a1424; --page:#070e1a; --accent:#6ee7d2;
-  --cliff-far:#122741; --cliff-mid:#0c1b30; --cliff-near:#081221; --shore:#050b15;
-  --w1:#12405a; --w2:#0d3048; --w3:#082033;
+  --l1:#122741; --l2:#0f2038; --l3:#0b1830; --l4:#081226; --shore:#050b15;
+  --t1:#101f35; --t2:#0d1c31; --t3:#091428; --t4:#060e1f;
+  --w1:#12405a; --w2:#0d3048; --w3:#082033; --glitter:#bed7e8;
   --cloud:#1e324b; --cloud-op:.5; --star-op:1; --sun-op:0; --moon-op:1;
   --serif:"Fraunces",Georgia,serif;
   --sans:"Schibsted Grotesk",system-ui,sans-serif;
@@ -72,13 +73,22 @@ body,#scene .sky, .cloud path, .cliff path, #shore, .gull path, .dog path, .dog 
   50%{transform:translate(48vw,1vh)} 75%{transform:translate(76vw,-2vh)}
   100%{transform:translate(108vw,.5vh)}}
 
-/* falaises du fjord — 3 couches, parallaxe au scroll */
-.cliff{position:absolute; left:0; right:0; bottom:0; width:100%; will-change:transform}
-.cliff svg{display:block; width:100%}
-#cliff-far svg{height:34vh} #cliff-mid svg{height:27vh} #cliff-near svg{height:20vh}
-#cliff-far  path{fill:var(--cliff-far)}
-#cliff-mid  path{fill:var(--cliff-mid)}
-#cliff-near path{fill:var(--cliff-near)}
+/* montagnes du fjord — couches générées (crêtes + forêt boréale), parallaxe au scroll */
+.land{position:absolute; left:0; right:0; bottom:0; will-change:transform}
+.land svg{display:block; width:100%}
+#land-1 svg{height:46vh} #land-2 svg{height:38vh} #land-3 svg{height:30vh} #land-4 svg{height:23vh}
+#land-1 path{fill:var(--l1)} #land-2 path{fill:var(--l2)}
+#land-3 path{fill:var(--l3)} #land-4 path{fill:var(--l4)}
+#land-1 .trees{fill:var(--t1)} #land-2 .trees{fill:var(--t2)}
+#land-3 .trees{fill:var(--t3)} #land-4 .trees{fill:var(--t4)}
+/* brume atmosphérique entre les plans */
+#mist{position:absolute; left:0; right:0; bottom:24vh; height:16vh; opacity:.4;
+  background:linear-gradient(180deg, transparent 0%, var(--sky-low) 55%, transparent 100%);
+  transition:background 3s linear;}
+/* reflet de l'astre sur l'eau */
+#glitter{position:absolute; bottom:0; width:150px; height:20vh; opacity:0;
+  background:radial-gradient(ellipse 45% 90% at 50% 100%, var(--glitter) 0%, transparent 70%);
+  filter:blur(2px); transition:opacity 3s linear; mix-blend-mode:screen;}
 
 /* l'eau — sa hauteur suit la vraie marée */
 #water{position:absolute; left:0; right:0; bottom:0; height:24vh;
@@ -115,7 +125,7 @@ body,#scene .sky, .cloud path, .cliff path, #shore, .gull path, .dog path, .dog 
   clip-path:polygon(0 42%, 12% 30%, 30% 38%, 52% 26%, 74% 36%, 100% 24%, 100% 100%, 0 100%);}
 #dogs{position:absolute; bottom:5.2vh; left:6vw; z-index:4;}
 .dog{position:absolute; bottom:0}
-.dog path,.dog rect{fill:var(--shore); filter:brightness(1.35)}
+.dog path,.dog rect{fill:var(--dog,#3a4450)}
 .dog .leg{transform-box:fill-box; transform-origin:top center}
 .dog .l1{animation:step .5s ease-in-out infinite alternate}
 .dog .l2{animation:step .5s ease-in-out infinite alternate-reverse}
@@ -273,15 +283,12 @@ footer a{color:var(--ink-3)}
     <path class="wl" d="M24 16 Q14 6 3 10"/><path class="wr" d="M24 16 Q34 6 45 10"/>
   </svg>
 
-  <div class="cliff" id="cliff-far"><svg viewBox="0 0 1440 300" preserveAspectRatio="none" >
-    <path d="M0 300 L0 170 Q90 120 190 138 Q260 90 360 110 Q430 70 520 96 L600 130 Q700 88 800 112 Q900 60 1010 92 Q1100 66 1200 100 Q1320 80 1440 128 L1440 300 Z"/>
-  </svg></div>
-  <div class="cliff" id="cliff-mid"><svg viewBox="0 0 1440 260" preserveAspectRatio="none">
-    <path d="M0 260 L0 150 Q120 96 240 126 Q330 74 450 108 Q560 66 660 110 L760 150 Q880 96 990 128 Q1110 82 1230 122 Q1340 100 1440 140 L1440 260 Z"/>
-  </svg></div>
-  <div class="cliff" id="cliff-near"><svg viewBox="0 0 1440 210" preserveAspectRatio="none">
-    <path d="M0 210 L0 120 Q150 60 300 100 Q420 52 560 96 Q700 44 840 92 Q980 56 1120 100 Q1290 64 1440 110 L1440 210 Z"/>
-  </svg></div>
+  <div class="land" id="land-1"></div>
+  <div class="land" id="land-2"></div>
+  <div id="mist"></div>
+  <div class="land" id="land-3"></div>
+  <div class="land" id="land-4"></div>
+  <div id="glitter"></div>
 
   <div id="water">
     <svg class="waves" viewBox="0 0 1440 320" preserveAspectRatio="none">
@@ -438,13 +445,17 @@ function solarPos(date){
 /* Chaque palette : [skyTop, skyMid, skyLow, ink, ink2, panel, page, waterBase, cloud], + scalaires */
 const PALS = {
   night:   {c:[[5,10,24],[10,25,48],[22,48,80],[230,240,247],[150,172,192],[10,20,36],[7,14,26],[18,63,82],[30,50,75]],
-            cloudOp:.45, starOp:1, sunOp:0, accent:[110,231,210]},
+            cloudOp:.45, starOp:1, sunOp:0, accent:[110,231,210],
+            land:[6,14,26], glitter:[190,215,232], glitOp:.35},
   twilight:{c:[[38,42,88],[136,84,112],[242,152,106],[255,241,231],[228,190,180],[46,38,68],[36,30,56],[74,64,116],[210,130,120]],
-            cloudOp:.75, starOp:.35, sunOp:1, accent:[255,178,128]},
+            cloudOp:.75, starOp:.35, sunOp:1, accent:[255,178,128],
+            land:[26,20,44], glitter:[255,150,92], glitOp:.85},
   golden:  {c:[[72,122,176],[232,150,96],[255,202,122],[255,248,235],[235,215,190],[52,60,94],[42,50,80],[96,92,142],[255,190,140]],
-            cloudOp:.85, starOp:0, sunOp:1, accent:[255,196,120]},
-  day:     {c:[[96,160,210],[150,200,232],[214,236,246],[20,42,58],[55,86,106],[244,240,230],[233,228,215],[45,125,170],[255,255,255]],
-            cloudOp:.92, starOp:0, sunOp:1, accent:[13,124,110]},
+            cloudOp:.85, starOp:0, sunOp:1, accent:[255,196,120],
+            land:[40,32,46], glitter:[255,184,96], glitOp:.9},
+  day:     {c:[[86,155,208],[142,196,230],[205,230,242],[20,42,58],[55,86,106],[244,240,230],[233,228,215],[38,118,164],[255,255,255]],
+            cloudOp:.92, starOp:0, sunOp:1, accent:[13,124,110],
+            land:[16,66,50], glitter:[255,244,214], glitOp:.5},
 };
 const lerp=(a,b,t)=>a+(b-a)*t;
 const mixC=(a,b,t)=>a.map((v,i)=>Math.round(lerp(v,b[i],t)));
@@ -452,7 +463,9 @@ const css=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
 function mixPal(p,q,t){
   return {c:p.c.map((col,i)=>mixC(col,q.c[i],t)),
     cloudOp:lerp(p.cloudOp,q.cloudOp,t), starOp:lerp(p.starOp,q.starOp,t),
-    sunOp:lerp(p.sunOp,q.sunOp,t), accent:mixC(p.accent,q.accent,t)};
+    sunOp:lerp(p.sunOp,q.sunOp,t), accent:mixC(p.accent,q.accent,t),
+    land:mixC(p.land,q.land,t), glitter:mixC(p.glitter,q.glitter,t),
+    glitOp:lerp(p.glitOp,q.glitOp,t)};
 }
 function paletteFor(alt){
   if(alt<=-10) return PALS.night;
@@ -479,16 +492,20 @@ function updateSky(){
   const R = document.documentElement.style;
   const names=["--sky-top","--sky-mid","--sky-low","--ink","--ink-2","--panel","--page","--wbase","--cloud"];
   P.c.forEach((col,i)=>R.setProperty(names[i],css(col)));
-  const ink=P.c[3], deep=mixC(P.c[6],[0,0,0],.55), low=P.c[2], wb=P.c[7];
+  const low=P.c[2], wb=P.c[7], land=P.land;
   R.setProperty("--ink-3", css(mixC(P.c[4],P.c[6],.35)));
   R.setProperty("--accent", css(P.accent));
-  R.setProperty("--cliff-far",  css(mixC(low,deep,.34)));
-  R.setProperty("--cliff-mid",  css(mixC(low,deep,.58)));
-  R.setProperty("--cliff-near", css(mixC(low,deep,.78)));
-  R.setProperty("--shore",      css(mixC(low,deep,.9)));
-  R.setProperty("--w1", css(mixC(wb,low,.3)));
+  // perspective atmosphérique : chaque plan est un mélange ciel-horizon → terre
+  [[".22","--l1"],[".42","--l2"],[".64","--l3"],[".85","--l4"]].forEach(([t,v])=>{
+    R.setProperty(v, css(mixC(low,land,parseFloat(t))));
+    R.setProperty("--t"+v.slice(3), css(mixC(low,land,Math.min(1,parseFloat(t)+.13))));
+  });
+  R.setProperty("--shore", css(mixC(low,land,.92)));
+  R.setProperty("--dog", css(mixC(mixC(low,land,.92),P.c[3],.3)));
+  R.setProperty("--glitter", css(P.glitter));
+  R.setProperty("--w1", css(mixC(wb,low,.35)));
   R.setProperty("--w2", css(wb));
-  R.setProperty("--w3", css(mixC(wb,deep,.4)));
+  R.setProperty("--w3", css(mixC(wb,land,.45)));
   R.setProperty("--cloud-op",P.cloudOp);
   R.setProperty("--star-op",P.starOp);
   document.querySelector('meta[name="theme-color"]').content = css(P.c[0]);
@@ -498,7 +515,7 @@ function updateSky(){
   // d'éphéméride lunaire, c'est une scène, pas un planétarium.
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const fx = h => (h/Math.PI+1)/2;                   // 0..1 gauche→droite
-  const skyY = a => 66 - clamp(a,-6,58)*0.92;        // % du haut (horizon ≈ 72 %)
+  const skyY = a => 64 - clamp(a,-6,60)*0.97;        // % du haut ; zénith au-dessus du texte
   R.setProperty("--sun-op", String(P.sunOp * clamp((sun.alt+7)/6,0,1)));
   $("sun").style.left = `calc(${(fx(sun.H)*88+6).toFixed(2)}% - 39px)`;
   $("sun").style.top  = `${skyY(sun.alt).toFixed(2)}%`;
@@ -509,6 +526,13 @@ function updateSky(){
   R.setProperty("--moon-op", String(clamp((mAlt+2)/8,0,1) * Math.max(.3,P.starOp)));
   $("moon").style.left = `calc(${(fx(mH)*88+6).toFixed(2)}% - 30px)`;
   $("moon").style.top  = `${skyY(mAlt).toFixed(2)}%`;
+
+  // reflet sur l'eau : suit l'astre visible, plus fort quand il est bas
+  const sunUp = sun.alt > -4;
+  const gAlt = sunUp ? sun.alt : mAlt, gH = sunUp ? sun.H : mH;
+  const lowBoost = clamp(1.4 - gAlt/30, .4, 1.2);
+  $("glitter").style.left = `calc(${(fx(gH)*88+6).toFixed(2)}% - 75px)`;
+  $("glitter").style.opacity = String(clamp((gAlt+3)/6,0,1) * P.glitOp * lowBoost * (sunUp?1:.5));
 }
 
 /* ---------- données ---------- */
@@ -663,16 +687,50 @@ function bindTooltip(){
   }
   scene.insertBefore(frag, scene.querySelector(".cloud"));
 })();
+/* ---------- génération des montagnes : crêtes + forêt boréale ---------- */
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function buildLand(id, seed, opts){
+  const {baseY, amp, treeMin, treeMax, gap, smooth} = opts;
+  const Wd=1920, Hd=600, rnd=mulberry32(seed);
+  const ph1=rnd()*7, ph2=rnd()*7, ph3=rnd()*7;
+  const yAt=x=>{
+    const u=x/Wd*Math.PI*2;
+    let y = baseY
+      - amp*(.55*Math.sin(u*1.3+ph1) + .3*Math.sin(u*2.7+ph2) + .15*Math.sin(u*5.1+ph3));
+    return y;
+  };
+  // crête : segments courts avec léger accident rocheux
+  let d=`M0 ${Hd} L0 ${yAt(0).toFixed(1)}`;
+  const step=smooth?48:26;
+  for(let x=step; x<=Wd; x+=step){
+    const j=smooth?0:(rnd()-.5)*amp*.14;
+    d+=` L${x} ${(yAt(x)+j).toFixed(1)}`;
+  }
+  d+=` L${Wd} ${Hd} Z`;
+  // forêt d'épinettes le long de la crête
+  let trees="";
+  for(let x=rnd()*gap; x<Wd; x+=gap*(.6+rnd()*.9)){
+    const h=treeMin+(treeMax-treeMin)*rnd();
+    const w=h*.42, y=yAt(x)+2;
+    trees+=`M${(x-w/2).toFixed(1)} ${y.toFixed(1)} L${x.toFixed(1)} ${(y-h).toFixed(1)} L${(x+w/2).toFixed(1)} ${y.toFixed(1)} Z `;
+    if(h>14) trees+=`M${(x-w*.36).toFixed(1)} ${(y-h*.45).toFixed(1)} L${x.toFixed(1)} ${(y-h*1.18).toFixed(1)} L${(x+w*.36).toFixed(1)} ${(y-h*.45).toFixed(1)} Z `;
+  }
+  $(id).innerHTML=`<svg viewBox="0 0 ${Wd} ${Hd}" preserveAspectRatio="none">
+    <path d="${d}"/><path class="trees" d="${trees}"/></svg>`;
+}
+buildLand("land-1", 11,{baseY:190, amp:120, treeMin:5,  treeMax:9,  gap:14, smooth:true});
+buildLand("land-2", 47,{baseY:250, amp:110, treeMin:8,  treeMax:14, gap:16, smooth:true});
+buildLand("land-3", 83,{baseY:330, amp:95,  treeMin:13, treeMax:22, gap:19, smooth:false});
+buildLand("land-4", 29,{baseY:415, amp:80,  treeMin:20, treeMax:34, gap:24, smooth:false});
+
 (function parallax(){
-  const far=$("cliff-far"), mid=$("cliff-mid"), near=$("cliff-near");
+  const ls=[["land-1",.05],["land-2",.1],["land-3",.16],["land-4",.24]].map(([i,k])=>[$(i),k]);
   let ticking=false;
   addEventListener("scroll",()=>{
     if(ticking) return; ticking=true;
     requestAnimationFrame(()=>{
       const y=scrollY;
-      far.style.transform=`translateY(${y*.06}px)`;
-      mid.style.transform=`translateY(${y*.13}px)`;
-      near.style.transform=`translateY(${y*.22}px)`;
+      for(const [el,k] of ls) el.style.transform=`translateY(${y*k}px)`;
       ticking=false;
     });
   },{passive:true});
