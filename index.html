@@ -9,15 +9,22 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌊%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Schibsted+Grotesk:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Les couleurs de l'interface sont pilotées en JS par la position réelle du soleil
-   à Tadoussac. Valeurs initiales = nuit (avant le premier calcul). */
+/* La scène (ciel, encres du bandeau) suit le vrai soleil, pilotée en JS.
+   L'almanach papier, lui, est stable — c'est de l'imprimé. */
 :root{
   --sky-top:#050a18; --sky-mid:#0a1930; --sky-low:#163050;
-  --ink:#e6f0f7; --ink-2:#96acc0; --ink-3:#607a92; --ink-h2:#96acc0;
-  --panel:#0a1424; --page:#070e1a; --accent:#6ee7d2;
-  --w2:#123f52;
+  --ink:#e6f0f7; --ink-h2:#96acc0;
+
+  /* l'almanach : papier crème, encre d'imprimerie, deux encres de marée validées CVD */
+  --paper:#f5eedd; --paper-lo:#efe6d1;
+  --pnk:#241d13; --pnk-2:#6d6250; --pnk-3:#9a8f7a;
+  --rule:rgba(36,29,19,.16); --rule-soft:rgba(36,29,19,.08);
+  --hi:#0e69a2;   /* marée haute  */
+  --lo:#a3540b;   /* marée basse  */
+  --now:#c22e4f;  /* maintenant, en direct */
+
   --serif:"Fraunces",Georgia,serif;
   --sans:"Schibsted Grotesk",system-ui,sans-serif;
   --mono:"Spline Sans Mono",ui-monospace,monospace;
@@ -25,9 +32,9 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{
-  font-family:var(--sans); color:var(--ink); background:var(--page);
+  font-family:var(--sans); color:var(--pnk); background:var(--paper);
   min-height:100svh; overflow-x:hidden;
-  transition:color 3s linear, background 3s linear;
+  transition:background 3s linear;
 }
 
 /* ══════════════ LA SCÈNE — trois tableaux peints, fondus selon le vrai soleil ══════════════ */
@@ -37,133 +44,201 @@ body{
   object-fit:cover; object-position:50% 45%;}
 .bg{opacity:0; transition:opacity 2.5s linear;}
 
-/* voile de lisibilité : assombrit légèrement le haut (titre) et le bas (transition feuille) */
+/* léger voile en haut : lisibilité du wordmark et de l'horloge, rien d'autre */
 #scrim{position:absolute; inset:0; transition:background 3s linear;
   background:linear-gradient(180deg,
-    color-mix(in srgb, var(--page) 30%, transparent) 0%,
-    transparent 36%, transparent 64%,
-    color-mix(in srgb, var(--page) 34%, transparent) 100%);}
+    color-mix(in srgb, var(--sky-top) 38%, transparent) 0%,
+    transparent 30%);}
 
-/* le niveau de la vraie marée : voile d'eau dont la hauteur suit le niveau en direct */
-#tide-veil{position:absolute; left:0; right:0; bottom:0; height:18vh;
-  pointer-events:none; opacity:.32; transition:height 1.2s linear;
-  background:linear-gradient(180deg,
-    color-mix(in srgb, var(--w2) 60%, transparent) 0%,
-    color-mix(in srgb, var(--w2) 22%, transparent) 100%);}
-#tide-veil::before{content:""; position:absolute; left:0; right:0; top:-1px; height:2px;
-  background:linear-gradient(90deg, transparent,
-    color-mix(in srgb, var(--accent) 60%, transparent), transparent);
-  filter:blur(1px);}
-
-/* grain de papier — unifie la vidéo et l'interface */
-#grain{position:fixed; inset:0; z-index:40; pointer-events:none; opacity:.06;
+/* grain de papier — unifie la peinture et l'imprimé */
+#grain{position:fixed; inset:0; z-index:40; pointer-events:none; opacity:.05;
   mix-blend-mode:soft-light;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");}
 
 /* ══════════════ CONTENU ══════════════ */
 #app{position:relative; z-index:5}
-header{display:flex; justify-content:space-between; align-items:baseline;
-  padding:22px 24px 0; max-width:680px; margin:0 auto;}
+header#top{display:flex; justify-content:space-between; align-items:baseline;
+  padding:22px 26px 0; max-width:1100px; margin:0 auto;
+  text-shadow:0 1px 2px rgba(10,16,32,.45), 0 2px 18px rgba(10,16,32,.4);}
 #wordmark{font-family:var(--serif); font-weight:400; font-size:1.02rem;
   letter-spacing:.4em; text-transform:uppercase; color:var(--ink-h2)}
 #wordmark b{color:var(--ink); font-weight:500}
 #clock{font-family:var(--mono); font-size:.95rem; color:var(--ink-h2);
   font-variant-numeric:tabular-nums}
-header, #hero{text-shadow:0 1px 2px rgba(10,16,32,.4), 0 2px 18px rgba(10,16,32,.45);}
 
-#hero{min-height:88svh; display:flex; flex-direction:column; align-items:center;
-  text-align:center; padding:7vh 20px 0;}
-#trend{display:inline-flex; align-items:center; gap:.5em;
-  font-size:.78rem; font-weight:600; letter-spacing:.24em; text-transform:uppercase;
-  color:var(--ink); padding:.55em 1.3em; border-radius:99px;
-  border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);
-  background:color-mix(in srgb,var(--panel) 55%,transparent);
-  backdrop-filter:blur(3px);}
-#next-label{margin-top:4vh; font-size:.78rem; letter-spacing:.3em;
-  text-transform:uppercase; color:var(--ink-h2)}
-#next-time{font-family:var(--serif); font-weight:300; font-style:italic;
-  font-size:clamp(4.4rem,19vw,7.2rem); line-height:1.05;
-  font-variant-numeric:tabular-nums; color:var(--ink);
-  text-shadow:0 2px 4px rgba(10,16,32,.35), 0 4px 30px rgba(10,16,32,.5);}
-#next-detail{color:var(--ink-h2); font-size:1.02rem}
-#next-detail b{color:var(--ink); font-weight:600}
-#countdown{margin-top:.45em; font-family:var(--mono); font-size:.92rem; color:var(--ink-h2)}
-#live-line{margin-top:3.2vh; font-family:var(--mono); font-size:1.25rem;
-  color:var(--ink); font-variant-numeric:tabular-nums;}
-#live-line .lbl{display:block; font-size:.68rem; letter-spacing:.28em;
-  text-transform:uppercase; color:var(--ink-h2); margin-bottom:.3em; font-family:var(--sans)}
+/* la peinture respire seule ; toute l'information vit sur le papier */
+#hero{height:64svh}
 
-/* la feuille de détails qui recouvre la scène au scroll */
-#sheet{position:relative; z-index:6; background:var(--page);
-  border-radius:26px 26px 0 0; margin-top:5vh;
-  box-shadow:0 -18px 50px rgba(0,0,0,.28);
-  padding:34px 20px 46px; transition:background 3s linear;}
-#sheet-inner{max-width:680px; margin:0 auto}
-.card{border-radius:20px; padding:22px 20px; margin-bottom:24px;
-  background:var(--panel); border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);
-  transition:background 3s linear;}
-.card h2{font-family:var(--serif); font-weight:400; font-size:1.15rem;
-  font-style:italic; color:var(--ink-2); margin-bottom:16px;}
+/* ══════════════ L'ALMANACH — feuille imprimée qui recouvre la scène ══════════════ */
+#sheet{position:relative; z-index:6; background:var(--paper);
+  border-radius:22px 22px 0 0;
+  box-shadow:0 -22px 60px rgba(6,10,22,.45);
+  padding:0 22px 46px; transition:background 3s linear;}
+#sheet::before{content:""; position:absolute; top:0; left:0; right:0; height:5px;
+  border-radius:22px 22px 0 0;
+  background:linear-gradient(90deg, var(--hi), var(--lo));}
+#sheet-inner{max-width:740px; margin:0 auto}
 
-/* courbe */
+/* masthead d'almanach */
+#masthead{text-align:center; padding:34px 0 18px;
+  border-bottom:2px solid var(--pnk); margin-bottom:6px; position:relative}
+#masthead::after{content:""; position:absolute; left:0; right:0; bottom:-5px;
+  border-bottom:1px solid var(--rule)}
+.mh-top{font-size:.66rem; font-weight:700; letter-spacing:.34em; text-transform:uppercase;
+  color:var(--pnk-2); margin-bottom:.7em}
+.mh-date{font-family:var(--serif); font-weight:500; font-size:clamp(1.6rem,4.6vw,2.1rem);
+  line-height:1.15}
+.mh-sub{font-family:var(--mono); font-size:.72rem; color:var(--pnk-3); margin-top:.55em;
+  letter-spacing:.06em}
+
+/* le pont : l'essentiel en direct */
+#deck{padding:26px 0 30px; border-bottom:1px solid var(--rule)}
+#statement{display:flex; align-items:center; gap:14px; justify-content:center;
+  font-size:.78rem; font-weight:700; letter-spacing:.26em; text-transform:uppercase;
+  color:var(--pnk); margin-bottom:26px; white-space:nowrap}
+#statement::before,#statement::after{content:""; flex:1; height:1px; background:var(--rule)}
+#live-dot{display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:var(--now); margin-right:-4px; flex:none;
+  animation:beat 2.2s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1; transform:scale(1)}50%{opacity:.45; transform:scale(.78)}}
+#deck-grid{display:grid; grid-template-columns:1fr 1px 1fr; gap:0 30px; align-items:start}
+#deck-div{background:var(--rule); height:100%}
+.deck-cell .k{font-size:.68rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--pnk-2); margin-bottom:.5em}
+.deck-cell .k b{font-weight:700}
+.deck-cell .k b.hi{color:var(--hi)} .deck-cell .k b.lo{color:var(--lo)}
+.deck-cell .big{font-family:var(--serif); font-weight:600; line-height:1;
+  font-size:clamp(2.7rem,8.4vw,4.1rem); font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em}
+.deck-cell .big small{font-size:.42em; font-weight:500; color:var(--pnk-2); letter-spacing:0}
+.deck-cell .sub{font-size:.92rem; color:var(--pnk-2); margin-top:.65em}
+.deck-cell .sub b{color:var(--pnk); font-weight:600}
+#trend-arrow{font-family:var(--sans); font-weight:700}
+#trend-arrow.up{color:var(--hi)} #trend-arrow.down{color:var(--lo)}
+
+/* jauge du niveau : de la basse à la haute du jour */
+#gauge{position:relative; height:7px; border-radius:99px; margin-top:1.05em;
+  background:var(--rule-soft); border:1px solid var(--rule)}
+#gauge-fill{position:absolute; inset:0; width:40%; border-radius:99px;
+  background:linear-gradient(90deg, color-mix(in srgb,var(--lo) 55%, var(--paper)), var(--hi));
+  transition:width 1.2s linear}
+#gauge-knob{position:absolute; top:50%; left:40%; width:15px; height:15px;
+  border-radius:50%; background:var(--now); border:2.5px solid var(--paper);
+  box-shadow:0 1px 4px rgba(36,29,19,.35);
+  transform:translate(-50%,-50%); transition:left 1.2s linear}
+.gauge-lbl{display:flex; justify-content:space-between; margin-top:.55em;
+  font-family:var(--mono); font-size:.72rem; color:var(--pnk-3)}
+.gauge-lbl b{font-weight:500}
+.gauge-lbl .lo-b{color:var(--lo)} .gauge-lbl .hi-b{color:var(--hi)}
+
+/* sections éditoriales, séparées par des filets — pas de cartes */
+.block{padding:30px 0 34px; border-bottom:1px solid var(--rule)}
+.block-head{display:flex; justify-content:space-between; align-items:baseline;
+  gap:16px; margin-bottom:20px}
+.block-head h2{font-family:var(--serif); font-weight:600; font-size:1.45rem;
+  letter-spacing:-.01em}
+.head-note{font-family:var(--mono); font-size:.72rem; color:var(--pnk-3); text-align:right}
+
+/* courbe du jour */
 #curve-wrap{position:relative}
 #curve{display:block; width:100%; height:auto; touch-action:pan-y}
-.axis-label{font-family:var(--mono); font-size:10px; fill:var(--ink-3)}
-.grid-line{stroke:color-mix(in srgb,var(--ink) 9%,transparent); stroke-width:1}
-.tide-line{stroke:var(--accent); stroke-width:2; fill:none; stroke-linecap:round}
-.extreme-label{font-family:var(--mono); font-size:10.5px; fill:var(--ink-2)}
-.extreme-dot{fill:var(--panel); stroke:var(--accent); stroke-width:1.5}
-#now-dot{fill:var(--accent); stroke:var(--panel); stroke-width:2}
-#now-pulse{fill:none; stroke:var(--accent); stroke-width:1.5; opacity:.8;
+.axis-label{font-family:var(--mono); font-size:10px; fill:var(--pnk-3)}
+.grid-line{stroke:var(--rule-soft); stroke-width:1}
+.night-band{fill:rgba(36,29,19,.055)}
+.tide-line{stroke:var(--pnk); stroke-width:2.2; fill:none; stroke-linecap:round}
+.extreme-label{font-family:var(--mono); font-size:11px; font-weight:600; fill:var(--pnk)}
+.extreme-m{font-family:var(--mono); font-size:10px}
+.extreme-m.hi{fill:var(--hi)} .extreme-m.lo{fill:var(--lo)}
+.extreme-dot.hi{fill:var(--hi)} .extreme-dot.lo{fill:var(--lo)}
+.extreme-dot{stroke:var(--paper); stroke-width:1.6}
+#now-dot{fill:var(--now); stroke:var(--paper); stroke-width:2}
+#now-pulse{fill:none; stroke:var(--now); stroke-width:1.5; opacity:.8;
   transform-origin:center; animation:pulse 2.4s ease-out infinite}
 @keyframes pulse{from{opacity:.7;stroke-width:2}to{opacity:0;stroke-width:.5}}
-#cross{stroke:color-mix(in srgb,var(--ink) 28%,transparent); stroke-width:1; stroke-dasharray:3 3}
+#cross{stroke:rgba(36,29,19,.35); stroke-width:1; stroke-dasharray:3 3}
 #tooltip{position:absolute; pointer-events:none; display:none;
   font-family:var(--mono); font-size:.78rem; white-space:nowrap;
-  padding:.45em .8em; border-radius:10px; background:var(--panel);
-  border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);
-  color:var(--ink); transform:translate(-50%,-130%);}
-#tooltip b{color:var(--accent)}
+  padding:.45em .8em; border-radius:8px; background:var(--pnk);
+  color:var(--paper); transform:translate(-50%,-135%);
+  box-shadow:0 2px 10px rgba(36,29,19,.3)}
+#tooltip b{color:#ffd9a0}
 
-/* marées du jour / semaine */
-#today-chips{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px}
-.chip{display:flex; flex-direction:column; gap:2px; align-items:center;
-  padding:14px 8px; border-radius:14px;
-  background:color-mix(in srgb,var(--ink) 5%,transparent);
-  border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);}
-.chip.past{opacity:.42}
-.chip .t{font-family:var(--mono); font-size:1.25rem; font-variant-numeric:tabular-nums}
-.chip .k{font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3)}
-.chip .m{font-size:.8rem; color:var(--ink-2)}
-.chip.high .t{color:var(--accent)}
-#week .day{padding:13px 2px; border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
-#week .day:first-child{border-top:none}
-#week .dname{font-size:.78rem; letter-spacing:.22em; text-transform:uppercase;
-  color:var(--ink-3); margin-bottom:7px}
-#week .evts{display:flex; flex-wrap:wrap; gap:6px 16px;
-  font-family:var(--mono); font-size:.86rem; font-variant-numeric:tabular-nums}
-#week .evts span{color:var(--ink-2)}
-#week .evts .hi{color:var(--accent)}
+/* marées du jour : le registre */
+.trow{display:grid; grid-template-columns:1.5em minmax(4.2em,auto) 1fr auto auto;
+  align-items:baseline; gap:0 10px; padding:13px 10px;
+  border-top:1px solid var(--rule-soft); font-variant-numeric:tabular-nums}
+.trow:first-child{border-top:none}
+.trow .g{font-size:.9rem}
+.trow .g.hi{color:var(--hi)} .trow .g.lo{color:var(--lo)}
+.trow .ty{font-size:.72rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--pnk-2); white-space:nowrap}
+.trow .tt{font-family:var(--mono); font-weight:600; font-size:1.35rem}
+.trow .tm{font-family:var(--mono); font-size:.95rem; color:var(--pnk-2)}
+.trow .tr{font-size:.85rem; color:var(--pnk-3); font-style:italic; text-align:right; min-width:7em}
+.trow.past{opacity:.45}
+.trow.next{background:color-mix(in srgb, var(--hi) 7%, transparent);
+  border-radius:10px; border-top-color:transparent; position:relative}
+.trow.next::before{content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px;
+  border-radius:3px; background:var(--now)}
+.trow.next + .trow{border-top-color:transparent}
+.trow.next .tr{color:var(--now); font-weight:600; font-style:normal}
+
+/* la semaine : une ligne par jour, avec sa courbe */
+.wday{padding:15px 0; border-top:1px solid var(--rule-soft)}
+.wday:first-child{border-top:none}
+.wname{font-size:.72rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--pnk-2); margin-bottom:9px}
+.wday.today .wname{color:var(--now)}
+.wrow{display:grid; grid-template-columns:128px 1fr; gap:0 20px; align-items:center}
+.spark{display:block; width:128px; height:36px; overflow:visible}
+.spark path{fill:none; stroke:color-mix(in srgb, var(--pnk) 50%, transparent);
+  stroke-width:1.4; stroke-linecap:round}
+.spark .sp-hi{fill:var(--hi)} .spark .sp-lo{fill:var(--lo)}
+.wevts{display:grid; grid-template-columns:repeat(auto-fit,minmax(122px,1fr));
+  gap:5px 14px; font-family:var(--mono); font-size:.85rem; font-variant-numeric:tabular-nums}
+.wevts b{font-weight:400}
+.wevts b.hi{color:var(--hi)} .wevts b.lo{color:var(--lo)}
+.wevts i{font-style:normal; color:var(--pnk-3); font-size:.78rem}
 
 /* états */
-#loading,#error{text-align:center; padding:9vh 24px; color:var(--ink-2)}
+#loading,#error{text-align:center; padding:9vh 24px; color:var(--ink);
+  text-shadow:0 1px 3px rgba(10,16,32,.5)}
 #loading .wave-dots{font-size:1.6rem; animation:twinkle 1.6s ease-in-out infinite}
 @keyframes twinkle{0%,100%{transform:scale(.6)}50%{transform:scale(1.15)}}
 #error{display:none}
 #error h2{font-family:var(--serif); font-style:italic; font-weight:400;
-  color:#f4a09c; margin-bottom:.5em}
+  color:#ffb9b4; margin-bottom:.5em}
 #error p{font-size:.95rem; max-width:38ch; margin:0 auto 1.4em; line-height:1.55}
-#retry{font:inherit; font-weight:600; color:var(--page); cursor:pointer;
-  background:var(--accent); border:none; border-radius:99px; padding:.7em 2em;}
-footer{text-align:center; font-size:.72rem; color:var(--ink-3);
-  padding-top:8px; line-height:1.8;}
-footer a{color:var(--ink-3)}
+#retry{font:inherit; font-weight:600; color:var(--ink); cursor:pointer;
+  background:color-mix(in srgb, var(--sky-top) 55%, transparent);
+  border:1px solid var(--ink); border-radius:99px; padding:.7em 2em;}
+#retry:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
+footer{text-align:center; font-size:.72rem; color:var(--pnk-3);
+  padding-top:26px; line-height:1.9;}
+footer a{color:var(--pnk-2)}
+
+/* entrée orchestrée du papier */
+#content:not([hidden]) .rise{animation:rise .8s cubic-bezier(.2,.7,.25,1) backwards}
+#content:not([hidden]) .rise:nth-child(2){animation-delay:.08s}
+#content:not([hidden]) .rise:nth-child(3){animation-delay:.16s}
+#content:not([hidden]) .rise:nth-child(4){animation-delay:.24s}
+#content:not([hidden]) .rise:nth-child(5){animation-delay:.32s}
+@keyframes rise{from{opacity:0; transform:translateY(18px)}}
 
 @media (prefers-reduced-motion:reduce){
-  #now-pulse,#loading .wave-dots{animation:none}
+  #now-pulse,#loading .wave-dots,#live-dot{animation:none}
+  #content:not([hidden]) .rise{animation:none}
 }
-@media (max-width:420px){
-  .card{padding:18px 15px}
+@media (max-width:560px){
+  #hero{height:56svh}
+  #wordmark{font-size:.82rem; letter-spacing:.24em; white-space:nowrap}
+  #clock{font-size:.82rem}
+  #sheet{padding:0 16px 40px}
+  #deck-grid{gap:0 18px}
+  .deck-cell .sub{font-size:.84rem}
+  .trow{grid-template-columns:1.3em minmax(3.6em,auto) 1fr auto; padding:12px 6px}
+  .trow .tr{grid-column:2 / -1; text-align:left; min-width:0; margin-top:2px}
+  .wrow{grid-template-columns:1fr; gap:8px 0}
 }
 </style>
 </head>
@@ -176,14 +251,13 @@ footer a{color:var(--ink-3)}
   <video class="bg" id="vid-golden" src="assets/bg-golden.mp4" poster="assets/poster-golden.webp" muted playsinline loop preload="none"></video>
   <video class="bg" id="vid-day"    src="assets/bg-day.mp4"    poster="assets/poster-day.webp"    muted playsinline loop preload="none"></video>
   <div id="scrim"></div>
-  <div id="tide-veil"></div>
 </div>
 
 <div id="grain"></div>
 
 <!-- ═════════ CONTENU ═════════ -->
 <div id="app">
-  <header>
+  <header id="top">
     <div id="wordmark"><b>Tadoussac</b> · marées</div>
     <div id="clock" aria-label="Heure locale à Tadoussac">--:--:--</div>
   </header>
@@ -201,31 +275,49 @@ footer a{color:var(--ink-3)}
   </div>
 
   <div id="content" hidden>
-    <section id="hero">
-      <span id="trend"></span>
-      <div id="next-label">prochaine marée</div>
-      <div id="next-time">--:--</div>
-      <div id="next-detail"></div>
-      <div id="countdown"></div>
-      <div id="live-line"><span class="lbl">niveau actuel</span><span id="live-value">-,--- m</span></div>
-    </section>
+    <div id="hero" aria-hidden="true"></div>
 
     <div id="sheet"><div id="sheet-inner">
-      <section class="card">
-        <h2>La journée, heure par heure</h2>
+
+      <header id="masthead" class="rise">
+        <div class="mh-top">Almanach des marées · Tadoussac</div>
+        <div class="mh-date" id="mh-date">—</div>
+        <div class="mh-sub">48°08′ N · 69°43′ O — station 03425, Service hydrographique du Canada</div>
+      </header>
+
+      <section id="deck" class="rise" aria-label="Situation en direct">
+        <div id="statement"><span id="live-dot"></span><span id="statement-txt">—</span></div>
+        <div id="deck-grid">
+          <div class="deck-cell">
+            <div class="k" id="next-label">Prochaine marée</div>
+            <div class="big" id="next-time">--<small> h </small>--</div>
+            <div class="sub" id="next-sub">—</div>
+          </div>
+          <div id="deck-div"></div>
+          <div class="deck-cell">
+            <div class="k">Niveau actuel</div>
+            <div class="big"><span id="live-value">-,---</span><small> m </small><small id="trend-arrow"></small></div>
+            <div id="gauge" aria-hidden="true"><div id="gauge-fill"></div><div id="gauge-knob"></div></div>
+            <div class="gauge-lbl"><span><b class="lo-b">▼</b> <b id="g-min">—</b></span><span><b id="g-max">—</b> <b class="hi-b">▲</b></span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block rise">
+        <div class="block-head"><h2>La journée</h2><span class="head-note" id="sun-note"></span></div>
         <div id="curve-wrap">
-          <svg id="curve" viewBox="0 0 640 254" preserveAspectRatio="none" aria-label="Courbe du niveau de la marée aujourd'hui"></svg>
+          <svg id="curve" viewBox="0 0 660 270" preserveAspectRatio="none" aria-label="Courbe du niveau de la marée aujourd'hui"></svg>
           <div id="tooltip"></div>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Marées d'aujourd'hui</h2>
-        <div id="today-chips"></div>
+      <section class="block rise">
+        <div class="block-head"><h2>Marées d'aujourd'hui</h2><span class="head-note">heures locales</span></div>
+        <div id="today-rows"></div>
       </section>
 
-      <section class="card">
-        <h2>Les sept prochains jours</h2>
+      <section class="block rise" style="border-bottom:none">
+        <div class="block-head"><h2>La semaine</h2><span class="head-note">▲ haute · ▼ basse</span></div>
         <div id="week"></div>
       </section>
 
@@ -252,6 +344,7 @@ const fmtClock = {format:d=>fmtClockP.format(d).replace(/^24/,"00")};
 const fmtDay   = new Intl.DateTimeFormat("fr-CA",{timeZone:TZ,weekday:"long",day:"numeric",month:"long"});
 const fmtNum   = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtNum3  = new Intl.NumberFormat("fr-CA",{minimumFractionDigits:3,maximumFractionDigits:3});
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
 
 function tzOffsetMs(date){
   const p = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(date)
@@ -264,7 +357,6 @@ function localMidnightUTC(){
   const local = new Date(now.getTime()+off);
   return Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate()) - off;
 }
-const dayKey = ms => new Intl.DateTimeFormat("en-CA",{timeZone:TZ,dateStyle:"short"}).format(ms);
 
 /* ---------- position du soleil (algorithme NOAA simplifié) ---------- */
 function solarPos(date){
@@ -284,24 +376,19 @@ function solarPos(date){
   return {alt: alt/rad, H};
 }
 
-/* ---------- palette de l'interface : suit le vrai soleil ----------
-   [skyTop, skyMid, skyLow, ink, ink2, panel, page, waterBase] + accent */
+/* ---------- palette de la scène : suit le vrai soleil ----------
+   [skyTop, skyMid, skyLow, ink, inkH2] */
 const PALS = {
-  night:   {c:[[5,10,24],[10,25,48],[22,48,80],[230,240,247],[150,172,192],[10,20,36],[7,14,26],[18,63,82]],
-            accent:[110,231,210], hi2:[168,190,210]},
-  twilight:{c:[[38,42,88],[136,84,112],[242,152,106],[255,241,231],[228,190,180],[46,38,68],[36,30,56],[74,64,116]],
-            accent:[255,178,128], hi2:[255,238,230]},
-  golden:  {c:[[72,122,176],[232,150,96],[255,202,122],[255,248,235],[235,215,190],[52,60,94],[42,50,80],[96,92,142]],
-            accent:[255,196,120], hi2:[255,245,234]},
-  day:     {c:[[86,155,208],[142,196,230],[205,230,242],[20,42,58],[55,86,106],[244,240,230],[233,228,215],[38,118,164]],
-            accent:[13,124,110], hi2:[38,62,82]},
+  night:   {c:[[5,10,24],[10,25,48],[22,48,80],[230,240,247],[168,190,210]], paper:[233,225,207]},
+  twilight:{c:[[38,42,88],[136,84,112],[242,152,106],[255,241,231],[255,238,230]], paper:[241,233,216]},
+  golden:  {c:[[72,122,176],[232,150,96],[255,202,122],[255,248,235],[255,245,234]], paper:[245,238,221]},
+  day:     {c:[[86,155,208],[142,196,230],[205,230,242],[20,42,58],[38,62,82]], paper:[245,238,221]},
 };
 const lerp=(a,b,t)=>a+(b-a)*t;
 const mixC=(a,b,t)=>a.map((v,i)=>Math.round(lerp(v,b[i],t)));
 const css=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
 function mixPal(p,q,t){
-  return {c:p.c.map((col,i)=>mixC(col,q.c[i],t)), accent:mixC(p.accent,q.accent,t),
-    hi2:mixC(p.hi2,q.hi2,t)};
+  return {c:p.c.map((col,i)=>mixC(col,q.c[i],t)), paper:mixC(p.paper,q.paper,t)};
 }
 function paletteFor(alt){
   if(alt<=-10) return PALS.night;
@@ -333,11 +420,9 @@ function updateSky(){
   const sun = solarPos(d);
   const P = paletteFor(sun.alt);
   const R = document.documentElement.style;
-  const names=["--sky-top","--sky-mid","--sky-low","--ink","--ink-2","--panel","--page","--w2"];
+  const names=["--sky-top","--sky-mid","--sky-low","--ink","--ink-h2"];
   P.c.forEach((col,i)=>R.setProperty(names[i],css(col)));
-  R.setProperty("--ink-3", css(mixC(P.c[4],P.c[6],.35)));
-  R.setProperty("--accent", css(P.accent));
-  R.setProperty("--ink-h2", css(P.hi2));
+  R.setProperty("--paper", css(P.paper));         // le papier s'assombrit à peine la nuit
   document.querySelector('meta[name="theme-color"]').content = css(P.c[0]);
 
   // poids de chaque tableau : jour ≥ +10°, heure dorée entre, nuit ≤ −8°
@@ -383,12 +468,33 @@ function levelAt(ms){
   const a=series[i], b=series[i+1];
   return a.v + (b.v-a.v)*((ms-a.t)/(b.t-a.t));
 }
+/* interpolation cosinus entre extrêmes — pour les courbes de la semaine */
+function hiloLevel(t){
+  let i=events.findIndex(e=>e.t>t);
+  if(i<0)  return events[events.length-1].v;
+  if(i===0) return events[0].v;
+  const a=events[i-1], b=events[i], u=(t-a.t)/(b.t-a.t);
+  return a.v + (b.v-a.v)*(1-Math.cos(Math.PI*u))/2;
+}
 
-/* ---------- courbe ---------- */
-const W=640, H=254, PX=34, PT=30, PB=46;
-const xOf = ms => PX + (ms-series[0].t)/(series[series.length-1].t-series[0].t)*(W-2*PX);
+/* ---------- courbe du jour ---------- */
+const W=660, H=270, PXL=42, PXR=18, PT=26, PB=42;
+const xOf = ms => PXL + (ms-series[0].t)/(series[series.length-1].t-series[0].t)*(W-PXL-PXR);
 const yOf = v => { const pad=(dayMax-dayMin)*.14;
   return PT + (1-(v-(dayMin-pad))/((dayMax+pad)-(dayMin-pad)))*(H-PT-PB); };
+
+function nightBands(){
+  // intervalles où le soleil est sous l'horizon (−0,833° : réfraction)
+  const t0=series[0].t, t1=series[series.length-1].t;
+  const bands=[]; let start=null;
+  for(let t=t0; t<=t1; t+=6e5){
+    const dark = solarPos(new Date(t)).alt < -0.833;
+    if(dark && start===null) start=t;
+    if(!dark && start!==null){ bands.push([start,t]); start=null; }
+  }
+  if(start!==null) bands.push([start,t1]);
+  return bands;
+}
 function renderCurve(){
   const svg=$("curve"), step=5;
   let line="";
@@ -398,78 +504,146 @@ function renderCurve(){
   }
   const last=series[series.length-1];
   line += `L${xOf(last.t).toFixed(1)},${yOf(last.v).toFixed(1)}`;
-  const area = line + `L${W-PX},${H-PB}L${PX},${H-PB}Z`;
-  const grid=[0,6,12,18,24].map(h=>{
-    const x=PX+h/24*(W-2*PX);
+  const area = line + `L${W-PXR},${H-PB}L${PXL},${H-PB}Z`;
+
+  // nuit ombrée + note lever/coucher
+  const bands = nightBands();
+  const night = bands.map(([a,b])=>
+    `<rect class="night-band" x="${xOf(a).toFixed(1)}" y="${PT}" width="${(xOf(b)-xOf(a)).toFixed(1)}" height="${H-PT-PB}"/>`).join("");
+  let sunrise=null, sunset=null;
+  for(const [a,b] of bands){
+    if(a<=series[0].t+6e5 && b<last.t) sunrise=b;
+    if(b>=last.t-6e5 && a>series[0].t) sunset=a;
+  }
+  $("sun-note").textContent = (sunrise&&sunset)
+    ? `soleil de ${fmtTime.format(sunrise)} à ${fmtTime.format(sunset)}` : "";
+
+  const gridX=[0,6,12,18,24].map(h=>{
+    const x=PXL+h/24*(W-PXL-PXR);
     return `<line class="grid-line" x1="${x}" y1="${PT}" x2="${x}" y2="${H-PB}"/>
-            <text class="axis-label" x="${x}" y="${H-8}" text-anchor="middle">${String(h).padStart(2,"0")} h</text>`;
+            <text class="axis-label" x="${x}" y="${H-14}" text-anchor="middle">${String(h).padStart(2,"0")} h</text>`;
   }).join("");
+  // échelle verticale : chaque mètre entier
+  const pad=(dayMax-dayMin)*.14;
+  let gridY="";
+  for(let m=Math.ceil(dayMin-pad); m<=Math.floor(dayMax+pad); m++){
+    const y=yOf(m);
+    gridY += `<line class="grid-line" x1="${PXL}" y1="${y}" x2="${W-PXR}" y2="${y}"/>
+              <text class="axis-label" x="${PXL-8}" y="${y+3.5}" text-anchor="end">${m} m</text>`;
+  }
   const labels = events.filter(e=>e.t>=series[0].t && e.t<=last.t).map(e=>{
     const x=xOf(e.t), y=yOf(e.v), up=e.hi;
-    const lx=Math.max(PX+24, Math.min(W-PX-24, x));
-    return `<circle class="extreme-dot" cx="${x}" cy="${y}" r="3.5"/>
-            <text class="extreme-label" x="${lx}" y="${up? y-16 : y+22}" text-anchor="middle">${fmtTime.format(e.t)}</text>
-            <text class="extreme-label" x="${lx}" y="${up? y-6 : y+32}" text-anchor="middle" opacity=".65">${fmtNum.format(e.v)} m</text>`;
+    const lx=Math.max(PXL+26, Math.min(W-PXR-26, x));
+    return `<circle class="extreme-dot ${e.hi?"hi":"lo"}" cx="${x}" cy="${y}" r="4"/>
+            <text class="extreme-label" x="${lx}" y="${up? y-17 : y+23}" text-anchor="middle">${fmtTime.format(e.t)}</text>
+            <text class="extreme-m ${e.hi?"hi":"lo"}" x="${lx}" y="${up? y-6 : y+34}" text-anchor="middle">${fmtNum.format(e.v)} m</text>`;
   }).join("");
   svg.innerHTML = `
-    <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue("--accent")}" stop-opacity=".2"/>
-      <stop offset="1" stop-color="#000" stop-opacity="0"/>
-    </linearGradient></defs>
-    ${grid}
-    <path fill="url(#areaGrad)" d="${area}"/>
+    ${night}
+    ${gridY}${gridX}
+    <path fill="rgba(14,105,162,.08)" d="${area}"/>
     <path class="tide-line" d="${line}"/>
     ${labels}
     <line id="cross" y1="${PT}" y2="${H-PB}" visibility="hidden"/>
     <circle id="now-pulse" r="6"/>
     <circle id="now-dot" r="4.5"/>`;
 }
-function renderChips(){
+
+/* ---------- registre du jour ---------- */
+function renderToday(){
   const now=Date.now(), last=series[series.length-1];
-  $("today-chips").innerHTML = events
-    .filter(e=>e.t>=series[0].t && e.t<=last.t)
-    .map(e=>`<div class="chip ${e.hi?"high":""} ${e.t<now?"past":""}">
-        <span class="k">${e.hi?"⬆ haute":"⬇ basse"}</span>
-        <span class="t">${fmtTime.format(e.t)}</span>
-        <span class="m">${fmtNum.format(e.v)} m</span>
-      </div>`).join("");
-}
-function renderWeek(){
-  const groups={};
-  for(const e of events){ (groups[dayKey(e.t)] ??= []).push(e); }
-  $("week").innerHTML = Object.values(groups).map(list=>`
-    <div class="day">
-      <div class="dname">${fmtDay.format(list[0].t)}</div>
-      <div class="evts">${list.map(e=>
-        `<span class="${e.hi?"hi":""}">${e.hi?"⬆":"⬇"} ${fmtTime.format(e.t)} · ${fmtNum.format(e.v)} m</span>`).join("")}
-      </div>
-    </div>`).join("");
+  const next = events.find(e=>e.t>now);
+  const list = events.filter(e=>e.t>=series[0].t && e.t<=last.t);
+  // toutes les marées du jour sont passées → montrer la prochaine (demain)
+  const withTomorrow = (next && !list.includes(next)) ? list.concat(next) : list;
+  $("today-rows").innerHTML = withTomorrow
+    .map(e=>{
+      const past=e.t<now, isNext=e===next, tomorrow=e.t>last.t;
+      const mins=Math.round(Math.abs(e.t-now)/6e4);
+      const rel = past ? "passée" : `dans ${Math.floor(mins/60)} h ${String(mins%60).padStart(2,"0")}`;
+      return `<div class="trow${past?" past":""}${isNext?" next":""}">
+        <span class="g ${e.hi?"hi":"lo"}">${e.hi?"▲":"▼"}</span>
+        <span class="ty">${e.hi?"haute":"basse"}${tomorrow?" · demain":""}</span>
+        <span class="tt">${fmtTime.format(e.t)}</span>
+        <span class="tm">${fmtNum.format(e.v)} m</span>
+        <span class="tr">${rel}</span>
+      </div>`;
+    }).join("");
+  $("g-min").textContent = fmtNum.format(dayMin)+" m";
+  $("g-max").textContent = fmtNum.format(dayMax)+" m";
 }
 
-/* ---------- vivant : compteur, voile de marée, point "maintenant" ---------- */
+/* ---------- la semaine : mini-courbes à échelle commune ---------- */
+function spark(d0,d1,mn,mx){
+  const Wd=128, Hd=36, p=5;
+  let d="";
+  for(let i=0;i<=40;i++){
+    const t=d0+(d1-d0)*i/40, v=hiloLevel(t);
+    d += (i?"L":"M")+(i/40*Wd).toFixed(1)+","+(p+(1-(v-mn)/(mx-mn))*(Hd-2*p)).toFixed(1);
+  }
+  const dots=events.filter(e=>e.t>=d0&&e.t<d1).map(e=>{
+    const x=((e.t-d0)/(d1-d0)*Wd).toFixed(1);
+    const y=(p+(1-(e.v-mn)/(mx-mn))*(Hd-2*p)).toFixed(1);
+    return `<circle cx="${x}" cy="${y}" r="2.6" class="${e.hi?"sp-hi":"sp-lo"}"/>`;
+  }).join("");
+  return `<svg class="spark" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true"><path d="${d}"/>${dots}</svg>`;
+}
+function renderWeek(){
+  const t0=localMidnightUTC();
+  const wkMin=Math.min(...events.map(e=>e.v)), wkMax=Math.max(...events.map(e=>e.v));
+  let html="";
+  for(let n=0;n<7;n++){
+    const d0=t0+n*864e5, d1=d0+864e5;
+    const list=events.filter(e=>e.t>=d0 && e.t<d1);
+    if(!list.length) continue;
+    const name = n===0 ? "Aujourd'hui" : n===1 ? "Demain" : cap(fmtDay.format(d0+432e5));
+    html += `<div class="wday${n===0?" today":""}">
+      <div class="wname">${name}</div>
+      <div class="wrow">${spark(d0,d1,wkMin,wkMax)}
+        <div class="wevts">${list.map(e=>
+          `<span><b class="${e.hi?"hi":"lo"}">${e.hi?"▲":"▼"}</b> ${fmtTime.format(e.t)} <i>${fmtNum.format(e.v)} m</i></span>`).join("")}
+        </div>
+      </div>
+    </div>`;
+  }
+  $("week").innerHTML = html;
+}
+
+/* ---------- vivant : horloge, pont en direct, point "maintenant" ---------- */
+let lastMinute = -1;
 function updateLive(){
   const now=Date.now();
   $("clock").textContent = fmtClock.format(now);
   const lvl = levelAt(now);
   if(lvl==null) return;
   const rising = levelAt(now+9e5) > lvl;
-  $("live-value").textContent = `${fmtNum3.format(lvl)} m ${rising?"↗":"↘"}`;
-  $("trend").textContent = rising ? "Marée montante ↗" : "Marée descendante ↘";
+
+  $("statement-txt").textContent = rising ? "La marée monte" : "La marée descend";
+  $("live-value").textContent = fmtNum3.format(lvl);
+  const ar=$("trend-arrow");
+  ar.textContent = rising ? "↗" : "↘";
+  ar.className = rising ? "up" : "down";
+
   const next = events.find(e=>e.t>now);
   if(next){
-    $("next-time").textContent = fmtTime.format(next.t);
-    $("next-detail").innerHTML = `marée <b>${next.hi?"haute":"basse"}</b> · ${fmtNum.format(next.v)} m`;
+    $("next-label").innerHTML = `Prochaine marée — <b class="${next.hi?"hi":"lo"}">${next.hi?"haute":"basse"}</b>`;
+    const [hh,mm]=fmtTime.format(next.t).match(/\d+/g);
+    $("next-time").innerHTML = `${hh}<small> h </small>${mm}`;
     const mins = Math.round((next.t-now)/6e4);
-    $("countdown").textContent = `dans ${Math.floor(mins/60)} h ${String(mins%60).padStart(2,"0")}`;
+    $("next-sub").innerHTML = `dans <b>${Math.floor(mins/60)} h ${String(mins%60).padStart(2,"0")}</b> · hauteur ${fmtNum.format(next.v)} m`;
   }
-  const frac = Math.max(0, Math.min(1,(lvl-dayMin)/(dayMax-dayMin||1)));
-  $("tide-veil").style.height = (10 + frac*16) + "vh";
+  const frac = clamp((lvl-dayMin)/(dayMax-dayMin||1), 0, 1);
+  $("gauge-fill").style.width = (frac*100)+"%";
+  $("gauge-knob").style.left  = (frac*100)+"%";
+
   const nd=$("now-dot"), np=$("now-pulse");
   if(nd && now>=series[0].t && now<=series[series.length-1].t){
     const x=xOf(now), y=yOf(levelAt(now));
     nd.setAttribute("cx",x); nd.setAttribute("cy",y);
     np.setAttribute("cx",x); np.setAttribute("cy",y);
   }
+  const min = Math.floor(now/6e4);
+  if(min!==lastMinute){ lastMinute=min; renderToday(); }
 }
 
 /* ---------- tooltip crosshair ---------- */
@@ -478,8 +652,8 @@ function bindTooltip(){
   function show(ev){
     const r=svg.getBoundingClientRect();
     const px=(ev.clientX-r.left)/r.width*W;
-    if(px<PX||px>W-PX){hide();return}
-    const t=series[0].t + (px-PX)/(W-2*PX)*(series[series.length-1].t-series[0].t);
+    if(px<PXL||px>W-PXR){hide();return}
+    const t=series[0].t + (px-PXL)/(W-PXL-PXR)*(series[series.length-1].t-series[0].t);
     const v=levelAt(t);
     const cross=$("cross");
     cross.setAttribute("x1",px); cross.setAttribute("x2",px); cross.setAttribute("visibility","visible");
@@ -502,10 +676,13 @@ async function init(){
   $("content").hidden=true;
   try{
     await loadData();
-    renderCurve(); renderChips(); renderWeek(); bindTooltip();
+    $("mh-date").textContent = cap(new Intl.DateTimeFormat("fr-CA",
+      {timeZone:TZ,weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(Date.now()));
+    renderCurve(); renderToday(); renderWeek(); bindTooltip();
     $("loading").style.display="none";
     $("content").hidden=false;
     clearInterval(liveTimer);
+    lastMinute=-1;
     updateLive();
     liveTimer=setInterval(updateLive,1000);
   }catch(err){
@@ -515,7 +692,7 @@ async function init(){
   }
 }
 $("retry").addEventListener("click",init);
-setInterval(()=>{ if(!document.hidden) loadData().then(()=>{renderCurve();renderChips();renderWeek();}).catch(()=>{}) },18e5);
+setInterval(()=>{ if(!document.hidden) loadData().then(()=>{renderCurve();renderToday();renderWeek();}).catch(()=>{}) },18e5);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden && series.length){
   if(Date.now() > series[series.length-1].t) init();
 }});
