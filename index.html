@@ -40,8 +40,11 @@ body{
 /* ══════════════ LA SCÈNE — trois tableaux peints, fondus selon le vrai soleil ══════════════ */
 #scene{position:fixed; inset:0; z-index:0; overflow:hidden; background:var(--sky-mid);
   transition:background 3s linear;}
-#poster,.bg{position:absolute; inset:0; width:100%; height:100%;
-  object-fit:cover; object-position:50% 45%;}
+/* la fenêtre visible = la bande au-dessus de la feuille : on cadre le tableau
+   sur le bas (chiens, rive, bélugas), pas sur le haut du ciel */
+#poster,.bg{position:absolute; top:0; left:0; width:100%;
+  height:calc(64svh + 34px);
+  object-fit:cover; object-position:50% 88%;}
 .bg{opacity:0; transition:opacity 2.5s linear;}
 
 /* léger voile en haut : lisibilité du wordmark et de l'horloge, rien d'autre */
@@ -231,6 +234,8 @@ footer a{color:var(--pnk-2)}
 }
 @media (max-width:560px){
   #hero{height:56svh}
+  /* portrait : la source est 16:9 — on privilégie les chiens sur la rive (droite du cadre) */
+  #poster,.bg{height:calc(56svh + 34px); object-position:95% 88%}
   #wordmark{font-size:.82rem; letter-spacing:.24em; white-space:nowrap}
   #clock{font-size:.82rem}
   #sheet{padding:0 16px 40px}
